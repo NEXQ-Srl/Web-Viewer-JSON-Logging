@@ -1,4 +1,14 @@
 import React, { useEffect, useState } from "react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 
 function App() {
   const [logs, setLogs] = useState([]);
@@ -7,15 +17,27 @@ function App() {
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem("theme") === "dark";
   });
-
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 10;
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [lastUpdated, setLastUpdated] = useState("");
 
-  useEffect(() => {
+  const fetchLogs = () => {
     fetch("http://localhost:5000/api/logs")
       .then((res) => res.json())
-      .then((data) => setLogs(data))
+      .then((data) => {
+        const sorted = data.sort(
+          (a, b) => new Date(b["@timestamp"]) - new Date(a["@timestamp"])
+        );
+        setLogs(sorted);
+        setLastUpdated(new Date().toLocaleTimeString());
+      })
       .catch((err) => console.error("Error loading logs:", err));
+  };
+
+  useEffect(() => {
+    fetchLogs();
+    const interval = setInterval(() => fetchLogs(), 5000);
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
@@ -29,7 +51,7 @@ function App() {
   }, [darkMode]);
 
   useEffect(() => {
-    setCurrentPage(1); // reset pagina quando filtri
+    setCurrentPage(1);
   }, [search, levelFilter]);
 
   const formatTimestamp = (isoString) => {
@@ -56,16 +78,34 @@ function App() {
     currentPage * rowsPerPage
   );
 
+  const hourlyGrouped = {};
+  filtered.forEach((log) => {
+    const date = new Date(log["@timestamp"]);
+    const hour = date.getHours().toString().padStart(2, "0");
+    const level = log.level || "unknown";
+
+    if (!hourlyGrouped[hour]) {
+      hourlyGrouped[hour] = { hour };
+    }
+
+    hourlyGrouped[hour][level] = (hourlyGrouped[hour][level] || 0) + 1;
+  });
+
+  const chartData = Object.values(hourlyGrouped).sort((a, b) => a.hour.localeCompare(b.hour));
+
   return (
     <div className="p-6 w-full text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900 min-h-screen">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">Daily Log Viewer</h2>
-        <button
-          onClick={() => setDarkMode((prev) => !prev)}
-          className="px-4 py-2 rounded bg-gray-200 dark:bg-gray-700 text-sm"
-        >
-          Toggle Theme
-        </button>
+        <div className="flex gap-2 items-center">
+          <span className="text-xs opacity-70">Last updated: {lastUpdated}</span>
+          <button
+            onClick={() => setDarkMode((prev) => !prev)}
+            className="px-4 py-2 rounded bg-gray-200 dark:bg-gray-700 text-sm"
+          >
+            Toggle Theme
+          </button>
+        </div>
       </div>
 
       <div className="flex gap-4 mb-6 flex-col md:flex-row">
@@ -87,6 +127,23 @@ function App() {
           <option value="warn">Warning</option>
           <option value="debug">Debug</option>
         </select>
+      </div>
+
+      <div className="mb-8 p-4 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-800 select-none">
+        <h3 className="text-lg font-semibold mb-2">Log Counts by Hour and Level</h3>
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={chartData} cursor={{ fill: 'transparent' }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="hour" />
+            <YAxis allowDecimals={false} />
+            <Tooltip cursor={false} />
+            <Legend />
+            <Bar dataKey="info" stackId="a" fill="#3b82f6" activeBar={false} />
+            <Bar dataKey="error" stackId="a" fill="#ef4444" activeBar={false} />
+            <Bar dataKey="warn" stackId="a" fill="#facc15" activeBar={false} />
+            <Bar dataKey="debug" stackId="a" fill="#10b981" activeBar={false} />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
 
       <div className="overflow-auto rounded-xl border dark:border-gray-700">
@@ -112,27 +169,39 @@ function App() {
         </table>
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex justify-between items-center mt-4 text-sm">
-          <button
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded disabled:opacity-50"
-          >
-            ← Previous
-          </button>
-          <span>
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-            disabled={currentPage === totalPages}
-            className="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded disabled:opacity-50"
-          >
-            Next →
-          </button>
-        </div>
-      )}
+      <div className="flex justify-end items-center mt-4 gap-4 text-sm">
+        <select
+          value={rowsPerPage}
+          onChange={(e) => {
+            setRowsPerPage(Number(e.target.value));
+            setCurrentPage(1);
+          }}
+          className="p-1 border rounded dark:bg-gray-800 dark:border-gray-700"
+        >
+          <option value={5}>5 rows</option>
+          <option value={10}>10 rows</option>
+          <option value={20}>20 rows</option>
+          <option value={50}>50 rows</option>
+        </select>
+
+        <button
+          onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+          disabled={currentPage === 1}
+          className="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded disabled:opacity-50"
+        >
+          ← Previous
+        </button>
+        <span>
+          Page {currentPage} of {totalPages}
+        </span>
+        <button
+          onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+          disabled={currentPage === totalPages}
+          className="px-3 py-1 bg-gray-200 dark:bg-gray-800 rounded disabled:opacity-50"
+        >
+          Next →
+        </button>
+      </div>
     </div>
   );
 }
