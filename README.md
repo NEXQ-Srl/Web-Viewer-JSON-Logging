@@ -18,9 +18,13 @@ Read JSON Log like:
 Download from Git:
 ```sh
 git clone https://github.com/NEXQ-Srl/Web-Viewer-JSON-Logging.git
-
-cd Web-Viewer-JSON-Logging
-
-docker build -t nexqlogviewer .
-
 ```
+
+```sh
+cd Web-Viewer-JSON-Logging
+```
+
+```sh
+docker build -t nexqlogviewer .
+```
+
