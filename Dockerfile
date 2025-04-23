@@ -1,3 +1,4 @@
+
 FROM ubuntu:24.04
 
 # Install system dependencies
@@ -17,15 +18,13 @@ RUN curl -fsSL https://nodejs.org/dist/v22.13.1/node-v22.13.1-linux-x64.tar.xz -
 WORKDIR /app
 
 # Copy all source code
-COPY client/ ./client
-COPY server/ ./server
+COPY . .
 
 # Install dependencies for client and server
-RUN cd client && npm install --legacy-peer-deps
-RUN cd server && npm install --legacy-peer-deps
+RUN npm install --legacy-peer-deps
 
 # Expose ports for frontend (5173 or 3000) and backend (5000)
 EXPOSE 5173 3000 5000
 
 # Start both React and Express in parallel using sh
-CMD sh -c "npm run server --prefix ./server & npm run dev --prefix ./client"
+CMD sh -c "npm run server & npm start"
