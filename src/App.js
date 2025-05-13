@@ -22,7 +22,9 @@ function App() {
   const [lastUpdated, setLastUpdated] = useState("");
 
   const fetchLogs = () => {
-    fetch("http://localhost:5000/api/logs")
+    const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+
+    fetch(`${apiUrl}/logs`)
       .then((res) => res.json())
       .then((data) => {
         const sorted = data.sort(
