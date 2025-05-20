@@ -1,4 +1,3 @@
-
 FROM ubuntu:24.04
 
 # Install system dependencies
@@ -21,10 +20,13 @@ WORKDIR /app
 COPY . .
 
 # Install dependencies for client and server
-RUN npm install --legacy-peer-deps
+RUN npm run install:all
 
-# Expose ports for frontend (5173 or 3000) and backend (5000)
-EXPOSE 5173 3000 5000
+# Build client and server
+RUN npm run build
 
-# Start both React and Express in parallel using sh
-CMD sh -c "npm run server & npm start"
+# Expose ports for server (5000)
+EXPOSE 5000
+
+# Start the server
+CMD ["node", "server/dist/index.js"]

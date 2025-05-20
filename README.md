@@ -1,6 +1,39 @@
-# Web-Viewer-JSON-Logging
+# Web Viewer JSON Logging
 
-![image](https://github.com/user-attachments/assets/372ae4da-b567-4552-88d2-511c778317eb)
+Application for visualizing and analyzing JSON logs.
+
+## Project Structure
+
+- `/client`: Contains the frontend application code (React)
+- `/server`: Contains the backend application code (Node.js/Fastify)
+
+## Getting Started
+
+1. Install dependencies:
+   ```
+   npm run install:all
+   ```
+
+2. Start the development environment (both frontend and backend):
+   ```
+   npm run dev
+   ```
+
+3. Start only frontend:
+   ```
+   npm run start:client
+   ```
+
+4. Start only backend:
+   ```
+   npm run start:server
+   ```
+
+## Building for Production
+
+```
+npm run build
+```
 
 ## ⚙️ How it Works
 - The software read a file log in JSON format. The file name can be: app-2025-04-23.log
