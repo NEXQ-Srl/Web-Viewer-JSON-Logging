@@ -26,7 +26,6 @@ const customColors = {
   debug: '#10b981', // emerald
 };
 
-// Custom tooltip component that respects theme
 const CustomTooltip = ({ active, payload, label }: {
   active?: boolean;
   payload?: Array<{
@@ -65,7 +64,6 @@ const CustomTooltip = ({ active, payload, label }: {
 const LogsChart: React.FC<LogsChartProps> = ({ chartData }) => {
   const { darkMode } = useTheme();
   
-  // Dynamically set colors based on theme
   const gridColor = darkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
   const axisColor = darkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)';
 

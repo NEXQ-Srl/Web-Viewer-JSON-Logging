@@ -30,11 +30,10 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     loadLogs();
-    const interval = setInterval(() => loadLogs(), 30000); // Refresh every 30 seconds
+    const interval = setInterval(() => loadLogs(), 30000);
     return () => clearInterval(interval);
   }, [loadLogs]);
 
-  // Apply filters when search or levelFilter changes
   useEffect(() => {
     setCurrentPage(1);
     
@@ -47,17 +46,14 @@ const Dashboard: React.FC = () => {
     setFilteredLogs(filtered);
     setHasMore(filtered.length > rowsPerPage);
     
-    // Reset to show first page
     setDisplayedLogs(filtered.slice(0, rowsPerPage));
   }, [search, levelFilter, logs, rowsPerPage]);
 
-  // Load more logs when scrolling
   const loadMoreLogs = useCallback(() => {
     if (isLoading || !hasMore) return;
     
     setIsLoading(true);
     
-    // Simulate loading delay for better UX
     setTimeout(() => {
       const nextPage = currentPage + 1;
       const nextItems = filteredLogs.slice(0, nextPage * rowsPerPage);
@@ -69,7 +65,6 @@ const Dashboard: React.FC = () => {
     }, 300);
   }, [currentPage, filteredLogs, hasMore, isLoading, rowsPerPage]);
 
-  // Generate chart data
   const hourlyGrouped: Record<string, ChartDataItem> = {};
   filteredLogs.forEach((log) => {
     try {
@@ -143,7 +138,7 @@ const Dashboard: React.FC = () => {
           onLoadMore={loadMoreLogs}
           hasMore={hasMore}
           isLoading={isLoading}
-          maxHeight="60vh" // Set a fixed height for the table container
+          maxHeight="60vh" 
         />
       </div>
     </div>

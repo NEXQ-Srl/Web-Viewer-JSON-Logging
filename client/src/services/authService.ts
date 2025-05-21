@@ -43,31 +43,25 @@ const msalConfig: Configuration = {
   }
 };
 
-// Ensure client ID is provided
 if (!msalConfig.auth.clientId) {
   console.warn("No client ID provided. Microsoft Authentication will not work correctly.");
 }
 
-// Create MSAL instance
 export const msalInstance = new PublicClientApplication(msalConfig);
 
-// Initialize MSAL
 msalInstance.initialize().catch(error => {
   console.error("MSAL Initialization Error:", error);
 });
 
-// Login scopes
 const loginRequest: PopupRequest = {
   scopes: ["User.Read"]
 };
 
-// Token request scopes (update with your actual API scope)
 const tokenRequest: SilentRequest = {
   scopes: ["email", "profile", "User.Read"],
   account: undefined 
 };
 
-// Login function
 export const login = async (): Promise<AuthenticationResult | null> => {
   try {
     return await msalInstance.loginPopup(loginRequest);
@@ -77,7 +71,6 @@ export const login = async (): Promise<AuthenticationResult | null> => {
   }
 };
 
-// Logout function
 export const logout = (): void => {
   const account = msalInstance.getActiveAccount();
   if (account) {
@@ -93,21 +86,17 @@ export const getAccessToken = async (): Promise<string | null> => {
     return null;
   }
 
-  // Use the first account
   const request: SilentRequest = {
     ...tokenRequest,
     account: accounts[0]
   };
 
   try {
-    // Try silent token acquisition first
     const response: AuthenticationResult = await msalInstance.acquireTokenSilent(request);
     return response.accessToken;
   } catch (error) {
-    // Handle interaction required errors
     if (error instanceof InteractionRequiredAuthError) {
       try {
-        // Fallback to interactive method if silent fails
         const response = await msalInstance.acquireTokenPopup(request);
         return response.accessToken;
       } catch (interactiveError) {
@@ -120,7 +109,6 @@ export const getAccessToken = async (): Promise<string | null> => {
   }
 };
 
-// Handle redirect after login if using redirect method
 export const handleRedirectCallback = async (): Promise<void> => {
   try {
     await msalInstance.handleRedirectPromise();

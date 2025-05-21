@@ -32,10 +32,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const initializeAuth = async () => {
       setLoading(true);
       try {
-        // Handle redirect if using redirect flow
         await handleRedirectCallback();
         
-        // Check if user is already signed in
         const currentAccounts = msalInstance.getAllAccounts();
         if (currentAccounts.length > 0) {
           setUser(currentAccounts[0]);
@@ -47,7 +45,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     };
 
-    // Register event handlers for auth state changes
     const loginSuccessHandler = (event: EventMessage) => {
       if (event.eventType === EventType.LOGIN_SUCCESS && event.payload) {
         const payload = event.payload as AuthenticationResult;
@@ -55,13 +52,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     };
 
-    // Register event callbacks
     const callbackId = msalInstance.addEventCallback(loginSuccessHandler);
     
-    // Initialize
     initializeAuth();
 
-    // Cleanup
     return () => {
       if (callbackId) {
         msalInstance.removeEventCallback(callbackId);

@@ -42,7 +42,7 @@ const Header: React.FC = () => {
           {user && (
             <div className="flex items-center gap-3">
               <Avatar className="h-8 w-8">
-                <AvatarImage src={user.photoUrl || undefined} alt={user.name || "User"} />
+                <AvatarImage alt={user.name || "User"} />
                 <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
               </Avatar>
               <span className="text-sm hidden md:inline font-medium">{user.name}</span>

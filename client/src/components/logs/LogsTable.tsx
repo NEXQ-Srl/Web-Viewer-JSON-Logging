@@ -72,7 +72,6 @@ const LogsTable: React.FC<LogsTableProps> = ({
 
   return (
     <div className="relative rounded-md border">
-      {/* Scrollable container with fixed height */}
       <div 
         ref={scrollableContainerRef}
         className="overflow-auto"
@@ -106,7 +105,6 @@ const LogsTable: React.FC<LogsTableProps> = ({
               </tr>
             ))}
             
-            {/* Loading indicator or end message */}
             {(hasMore || isLoading) && (
               <tr>
                 <td colSpan={4}>
