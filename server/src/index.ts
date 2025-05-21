@@ -1,12 +1,16 @@
 import dotenv from 'dotenv';
 import { logger } from './utils/logger';
 import { createServer } from './server';
+import { config } from './utils/config';
 
 dotenv.config();
 
 const PORT = parseInt(process.env.PORT || '5000', 10);
 
 async function start(): Promise<void> {
+  logger.info(`Starting server with auth enabled: ${config.auth.enabled}`);
+  logger.info(`Environment: ${config.environment}`);
+  
   const server = await createServer();
   
   try {

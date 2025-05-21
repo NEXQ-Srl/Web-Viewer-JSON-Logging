@@ -3,10 +3,6 @@ import path from 'path';
 import fs from 'fs';
 import { logger } from '../utils/logger';
 
-/**
- * Gets the current date string in YYYY-MM-DD format
- * @returns Date string for log file naming
- */
 export function getTodayDateString(): string {
   const now = new Date();
   const yyyy = now.getFullYear();
@@ -15,10 +11,6 @@ export function getTodayDateString(): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-/**
- * Get the absolute log directory path based on configuration
- * @returns Absolute path to the log directory
- */
 export function getLogDirectoryPath(): string {
   const projectRoot = path.resolve(__dirname, '../../../');
   
@@ -27,11 +19,7 @@ export function getLogDirectoryPath(): string {
     : path.resolve(projectRoot, process.env.LOG_FOLDER_PATH || 'logs');
 }
 
-/**
- * Ensures the log directory exists, creates it if it doesn't
- * @param directoryPath Path to the log directory
- * @returns Boolean indicating success
- */
+
 export function ensureDirectoryExists(directoryPath: string): boolean {
   if (!fs.existsSync(directoryPath)) {
     try {
@@ -46,12 +34,7 @@ export function ensureDirectoryExists(directoryPath: string): boolean {
   return true;
 }
 
-/**
- * Get the filename for the log based on the date and configured type
- * @param dateStr Date string in YYYY-MM-DD format
- * @returns Filename for the log
- * @throws Error if the log type isn't supported
- */
+
 export function getLogFileName(dateStr: string): string {
   switch (process.env.LOG_TYPE) {
     case "json":
@@ -63,12 +46,7 @@ export function getLogFileName(dateStr: string): string {
   }
 }
 
-/**
- * Get the full path to the log file for the current or specified date
- * @param dateStr Optional date string, defaults to today
- * @param createIfMissing Whether to create the file if it doesn't exist, defaults to false
- * @returns Full path to the log file
- */
+
 export function getLogFilePath(dateStr?: string, createIfMissing = true): string {
   const date = dateStr || getTodayDateString();
   const logFolderPath = getLogDirectoryPath();
@@ -89,7 +67,6 @@ export function getLogFilePath(dateStr?: string, createIfMissing = true): string
     
     if (createIfMissing) {
       try {
-        // Create an empty file
         fs.writeFileSync(fullPath, '', { flag: 'wx' });
         logger.info(`Created empty log file: ${fullPath}`);
       } catch (err) {
@@ -105,21 +82,15 @@ export function getLogFilePath(dateStr?: string, createIfMissing = true): string
   return fullPath;
 }
 
-/**
- * Ensures the log file exists, creates it if it doesn't
- * @param filePath Path to the log file
- * @returns Boolean indicating whether the file exists or was created
- */
+
 export function ensureLogFileExists(filePath: string): boolean {
   if (!fs.existsSync(filePath)) {
     try {
-      // Create the parent directory if it doesn't exist
       const dir = path.dirname(filePath);
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
       
-      // Create an empty file
       fs.writeFileSync(filePath, '', { flag: 'wx' });
       logger.info(`Log file created: ${filePath}`);
       return true;
@@ -131,11 +102,6 @@ export function ensureLogFileExists(filePath: string): boolean {
   return true;
 }
 
-/**
- * Parse JSON log data
- * @param data Raw log data
- * @returns Array of parsed log entries
- */
 export function parseJsonLogs(data: string): LogEntry[] {
   return data
     .split("\n")
@@ -151,12 +117,6 @@ export function parseJsonLogs(data: string): LogEntry[] {
     .filter((entry): entry is LogEntry => entry !== null);
 }
 
-/**
- * Extract field from a log line based on bracket positions
- * @param line Log line to parse
- * @param startAfterIndex Start searching after this index
- * @returns {string | null} Extracted field or null if not found
- */
 export function extractBracketField(line: string, startAfterIndex = 0): { value: string, endIndex: number } | null {
   const startIndex = line.indexOf('[', startAfterIndex);
   if (startIndex === -1) return null;
@@ -170,11 +130,6 @@ export function extractBracketField(line: string, startAfterIndex = 0): { value:
   };
 }
 
-/**
- * Parse plain text log data with improved field extraction
- * @param data Raw log data
- * @returns Array of parsed log entries
- */
 export function parsePlainTextLogs(data: string): LogEntry[] {
   return data
     .split("\n")
@@ -182,7 +137,6 @@ export function parsePlainTextLogs(data: string): LogEntry[] {
     .map((line) => {
       logger.debug("Riga grezza:", line);
 
-      // Extract fields between brackets more safely
       const timestampField = extractBracketField(line, 0);
       if (!timestampField) return null;
       
@@ -195,7 +149,6 @@ export function parsePlainTextLogs(data: string): LogEntry[] {
       const contextField = extractBracketField(line, moduleField.endIndex);
       if (!contextField) return null;
       
-      // Message is what remains after the last bracket
       const message = line.slice(contextField.endIndex + 1).trim();
       if (!message) return null;
 
@@ -211,11 +164,7 @@ export function parsePlainTextLogs(data: string): LogEntry[] {
     .filter((entry): entry is LogEntry => entry !== null);
 }
 
-/**
- * Parse log data based on the configured format
- * @param data Raw log data
- * @returns Array of parsed log entries
- */
+
 export function parseLogData(data: string): LogEntry[] {
   switch(process.env.LOG_TYPE) {
     case "json":
@@ -228,7 +177,6 @@ export function parseLogData(data: string): LogEntry[] {
   }
 }
 
-// Export a namespace for backward compatibility with class usage
 export const LogService = {
   getTodayDateString,
   getLogDirectoryPath,

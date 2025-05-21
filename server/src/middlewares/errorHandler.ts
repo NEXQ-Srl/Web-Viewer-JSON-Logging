@@ -21,7 +21,6 @@ export function errorHandler(
     }
   });
 
-  // Handle specific error types
   if (error.statusCode === 404) {
     return reply.code(404).send({
       error: 'Not Found',
@@ -30,7 +29,6 @@ export function errorHandler(
     });
   }
 
-  // Default error response
   const statusCode = error.statusCode || 500;
   const message = statusCode === 500 
     ? 'Internal Server Error' 

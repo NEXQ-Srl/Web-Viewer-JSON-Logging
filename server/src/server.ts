@@ -3,7 +3,7 @@ import fastifyCors from '@fastify/cors';
 import fastifyStatic from '@fastify/static';
 import path from 'path';
 import { registerMiddlewares } from './middlewares';
-import { config } from './config';
+import { config } from './utils/config';
 import { registerRoutes } from './routes';
 import fastifySwagger from '@fastify/swagger';
 import fastifySwaggerUi from '@fastify/swagger-ui';
@@ -14,20 +14,25 @@ export async function createServer(): Promise<FastifyInstance> {
     trustProxy: config.server.trustProxy
   });
 
-  await registerMiddlewares(server);
-
   await server.register(fastifyCors, {
-    origin: config.cors.origin,
-    methods: config.cors.methods,
-    credentials: config.cors.credentials
+    origin: true, 
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    credentials: true,
+    allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
+    exposedHeaders: ['Content-Disposition'],
+    maxAge: 86400, // 24 hours in seconds
+    preflightContinue: false,
+    optionsSuccessStatus: 204
   });
+
+  await registerMiddlewares(server);
 
   await server.register(fastifySwagger, {
     openapi: {
       openapi: '3.0.0',
       info: {
-        title: 'Swagger',
-        description: 'Fastify swagger API',
+        title: 'API Documentation',
+        description: 'Fastify API with JWT Authentication',
         version: '0.1.0'
       },
       servers: [
@@ -35,10 +40,21 @@ export async function createServer(): Promise<FastifyInstance> {
           url: `http://localhost:${config.server.port}/api`
         }
       ],
-      externalDocs: {
-        url: 'https://swagger.io',
-        description: 'Find more info here'
-      }
+      components: {
+        securitySchemes: {
+          bearerAuth: {
+            type: 'http',
+            scheme: 'bearer',
+            bearerFormat: 'JWT',
+            description: 'Enter JWT Bearer token'
+          }
+        }
+      },
+      security: [
+        {
+          bearerAuth: []
+        }
+      ]
     }
   })
 
@@ -46,13 +62,13 @@ export async function createServer(): Promise<FastifyInstance> {
     routePrefix: '/documentation',
     uiConfig: {
       docExpansion: 'list',
-      deepLinking: false
-    }
-  });
-
-  // Hook to log requests
-  server.addHook('onRequest', async (request) => {
-    // logger.debug(`Incoming request: ${request.method} ${request.url}`);
+      deepLinking: false,
+      displayRequestDuration: true,
+      defaultModelsExpandDepth: 3,
+      defaultModelExpandDepth: 3,
+      tryItOutEnabled: true
+    },
+    staticCSP: true
   });
 
   await registerRoutes(server);
