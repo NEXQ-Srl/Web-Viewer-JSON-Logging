@@ -20,13 +20,13 @@ WORKDIR /app
 COPY . .
 
 # Install dependencies for client and server
-RUN npm run install:all
+RUN npm run install:all --legacy-peer-deps
 
 # Build client and server
 RUN npm run build
 
 # Expose ports for server (5000)
-EXPOSE 5000
+EXPOSE 5000 3000
 
 # Start the server
-CMD ["node", "server/dist/index.js"]
+CMD ["npm", "run", "start"]
