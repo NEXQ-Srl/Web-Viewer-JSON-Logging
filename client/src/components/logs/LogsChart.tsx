@@ -78,6 +78,19 @@ const LogsChart: React.FC<LogsChartProps> = ({ chartData, onSegmentClick, viewMo
   const dataKey = viewMode === 'hour' ? 'hour' : 'date';
   const chartTitle = viewMode === 'hour' ? 'Log Activity by Hour' : 'Log Activity by Day';
 
+  const handleBarClick = React.useCallback(
+    (data: { payload: ChartDataItem }, level: string) => {
+      if (!onSegmentClick) return;
+      
+      const filter = viewMode === 'hour'
+        ? { hour: data.payload.hour, level }
+        : { date: data.payload.date, level };
+      
+      onSegmentClick(filter);
+    },
+    [onSegmentClick, viewMode]
+  );
+
   return (
     <Card className="mb-6">
       <CardHeader className="pb-2">
@@ -112,12 +125,7 @@ const LogsChart: React.FC<LogsChartProps> = ({ chartData, onSegmentClick, viewMo
                 fill={customColors.info}
                 name="Info"
                 radius={[4, 4, 0, 0]}
-                onClick={(data) => {
-                  const filter = viewMode === 'hour'
-                    ? { hour: data.payload.hour, level: 'info' }
-                    : { date: data.payload.date, level: 'info' };
-                  onSegmentClick?.(filter);
-                }}
+                onClick={(data) => handleBarClick(data, 'info')}
                 style={{ cursor: onSegmentClick ? 'pointer' : 'default' }}
               />
               <Bar
@@ -126,12 +134,7 @@ const LogsChart: React.FC<LogsChartProps> = ({ chartData, onSegmentClick, viewMo
                 fill={customColors.error}
                 name="Error"
                 radius={[4, 4, 0, 0]}
-                onClick={(data) => {
-                  const filter = viewMode === 'hour'
-                    ? { hour: data.payload.hour, level: 'error' }
-                    : { date: data.payload.date, level: 'error' };
-                  onSegmentClick?.(filter);
-                }}
+                onClick={(data) => handleBarClick(data, 'error')}
                 style={{ cursor: onSegmentClick ? 'pointer' : 'default' }}
               />
               <Bar
@@ -140,12 +143,7 @@ const LogsChart: React.FC<LogsChartProps> = ({ chartData, onSegmentClick, viewMo
                 fill={customColors.warn}
                 name="Warning"
                 radius={[4, 4, 0, 0]}
-                onClick={(data) => {
-                  const filter = viewMode === 'hour'
-                    ? { hour: data.payload.hour, level: 'warn' }
-                    : { date: data.payload.date, level: 'warn' };
-                  onSegmentClick?.(filter);
-                }}
+                onClick={(data) => handleBarClick(data, 'warn')}
                 style={{ cursor: onSegmentClick ? 'pointer' : 'default' }}
               />
               <Bar
@@ -154,12 +152,7 @@ const LogsChart: React.FC<LogsChartProps> = ({ chartData, onSegmentClick, viewMo
                 fill={customColors.debug}
                 name="Debug"
                 radius={[4, 4, 0, 0]}
-                onClick={(data) => {
-                  const filter = viewMode === 'hour'
-                    ? { hour: data.payload.hour, level: 'debug' }
-                    : { date: data.payload.date, level: 'debug' };
-                  onSegmentClick?.(filter);
-                }}
+                onClick={(data) => handleBarClick(data, 'debug')}
                 style={{ cursor: onSegmentClick ? 'pointer' : 'default' }}
               />
             </BarChart>

@@ -19,17 +19,19 @@ const Dashboard: React.FC = () => {
   const [levelFilter, setLevelFilter] = useState<string>("all");
   const [rowsPerPage, setRowsPerPage] = useState<number>(20);
   const [lastUpdated, setLastUpdated] = useState<string>("");
-  const [hasMore, setHasMore] = useState<boolean>(true);  const [isLoading, setIsLoading] = useState<boolean>(false);  
+  const [hasMore, setHasMore] = useState<boolean>(true);  
+  const [isLoading, setIsLoading] = useState<boolean>(false);  
   const [totalLogs, setTotalLogs] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(0);
   const [chartData, setChartData] = useState<ChartDataItem[]>([]);
   const [chartViewMode, setChartViewMode] = useState<'hour' | 'day'>('hour');
   const lastLoadedPageRef = useRef<number>(0);
   const isFetchingRef = useRef<boolean>(false);
+  const refreshTimeoutRef = useRef<number | null>(null);
   const [chartFilter, setChartFilter] = useState<ChartFilter | null>(null); 
   const [startDate, setStartDate] = useState<Date | undefined>(subDays(new Date(), 1)); 
   const [endDate, setEndDate] = useState<Date | undefined>(new Date()); 
-
+  const intervalRef = useRef<number | null>(null);
   const loadLogs = useCallback(
     async (reset: boolean = true): Promise<void> => {
       if (isFetchingRef.current) {
@@ -39,7 +41,8 @@ const Dashboard: React.FC = () => {
       isFetchingRef.current = true;
       setIsLoading(true);
 
-      try {        const pageToFetch = reset ? 1 : lastLoadedPageRef.current + 1;
+      try {
+        const pageToFetch = reset ? 1 : lastLoadedPageRef.current + 1;
 
         if (!reset && pageToFetch > totalPages && totalPages > 0) {
           setHasMore(false);
@@ -52,7 +55,9 @@ const Dashboard: React.FC = () => {
           pageToFetch,
           rowsPerPage,
           { search, levelFilter, startDate: startDate?.toISOString(), endDate: endDate?.toISOString() }
-        );        setTotalLogs(total);
+        );
+        
+        setTotalLogs(total);
         setTotalPages(pages);
         setHasMore(pageToFetch < pages);
         
@@ -88,34 +93,75 @@ const Dashboard: React.FC = () => {
         isFetchingRef.current = false;
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rowsPerPage, search, levelFilter, startDate, endDate] 
+    [rowsPerPage, search, levelFilter, startDate, endDate, totalPages]
   );
-
   useEffect(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    
     lastLoadedPageRef.current = 0;
     setLogs([]);
-    loadLogs(true);
-    const interval = setInterval(() => loadLogs(true), 30000);
-    return () => clearInterval(interval);
-  }, [rowsPerPage, loadLogs]);
-
+    
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current);
+    }
+    
+    refreshTimeoutRef.current = setTimeout(() => {
+      loadLogs(true);
+      refreshTimeoutRef.current = null;
+    }, 300) as unknown as number;
+    
+    return () => {
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, [rowsPerPage, search, levelFilter, startDate, endDate, loadLogs]);
+  
+  useEffect(() => {
+    intervalRef.current = setInterval(() => {
+      if (!isFetchingRef.current) {
+        loadLogs(true);
+      }
+    }, 30000) as unknown as number;
+    
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [loadLogs]);
   const loadMoreLogs = useCallback(() => {
     if (isLoading || !hasMore) {
       return;
     }
-    loadLogs(false);  }, [loadLogs, isLoading, hasMore]);
+    loadLogs(false);
+  }, [loadLogs, isLoading, hasMore]);
 
-  
   const handleSearchSubmit = (event: React.FormEvent) => {
     event.preventDefault();
-    setSearch(currentSearchInput);
-    setChartFilter(null); 
+    
+    if (search !== currentSearchInput) {
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+      
+      refreshTimeoutRef.current = setTimeout(() => {
+        setSearch(currentSearchInput);
+        setChartFilter(null);
+        refreshTimeoutRef.current = null;
+      }, 300) as unknown as number;
+    }
   };
 
   const handleChartSegmentClick = useCallback((filter: ChartFilter | null) => {
     setChartFilter(current => {
-      if (current && filter && current.hour === filter.hour && current.level === filter.level) {
+      if (current && filter && 
+          ((current.hour === filter.hour && current.level === filter.level) || 
+           (current.date === filter.date && current.level === filter.level))) {
         return null;
       }
       return filter;
@@ -155,14 +201,18 @@ const Dashboard: React.FC = () => {
   return (
     <div className="p-6 w-full">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold">Daily Log Viewer</h2>
-        <div className="flex items-center gap-2">
+        <h2 className="text-2xl font-bold">Daily Log Viewer</h2>        <div className="flex items-center gap-2">
           <span className="text-xs opacity-70">Last updated: {lastUpdated}</span>
           <button
-            onClick={() => loadLogs(true)}
+            onClick={() => {
+              if (!isFetchingRef.current) {
+                loadLogs(true);
+              }
+            }}
             className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+            disabled={isLoading}
           >
-            Refresh
+            {isLoading ? 'Refreshing...' : 'Refresh'}
           </button>
         </div>
       </div>
