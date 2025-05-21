@@ -1,15 +1,8 @@
-const express = require("express");
-const fs = require("fs");
-const path = require("path");
-const cors = require("cors");
-require("dotenv").config();
+import { LogEntry } from '../types/log';
+import path from 'path';
+import { logger } from './logger';
 
-const app = express();
-const PORT = 5000;
-
-app.use(cors());
-
-function getTodayDateString() {
+export function getTodayDateString(): string {
   const now = new Date();
   const yyyy = now.getFullYear();
   const mm = String(now.getMonth() + 1).padStart(2, "0");
@@ -17,11 +10,11 @@ function getTodayDateString() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-function getLogFilePath() {
-  const folderPath = path.resolve(__dirname, "../../", process.env.LOG_FOLDER_PATH);
+export function getLogFilePath(): string {
+  const folderPath = path.resolve(process.cwd(), "../../", process.env.LOG_FOLDER_PATH || '');
   const dateStr = getTodayDateString();
 
-  let fileName;
+  let fileName: string;
   if (process.env.LOG_TYPE === "json") {
     fileName = `app-${dateStr}.log`;
   } else if (process.env.LOG_TYPE === "plain") {
@@ -31,32 +24,32 @@ function getLogFilePath() {
   }
 
   const fullPath = path.join(folderPath, fileName);
-  console.log("📄 Tipo di log:", process.env.LOG_TYPE);
-  console.log("📂 Cartella logs:", folderPath);
-  console.log("📄 File atteso:", fullPath);
+  logger.info(`Tipo di log: ${process.env.LOG_TYPE}`);
+  logger.info(`Cartella logs: ${folderPath}`);
+  logger.info(`File atteso: ${fullPath}`);
   return fullPath;
 }
 
-function parseLogData(data) {
+export function parseLogData(data: string): LogEntry[] {
   if (process.env.LOG_TYPE === "json") {
     return data
       .split("\n")
       .filter(Boolean)
       .map((line) => {
         try {
-          return JSON.parse(line);
+          return JSON.parse(line) as LogEntry;
         } catch (e) {
-          console.warn("❌ JSON non valido:", line);
+          logger.warn("JSON non valido:", line);
           return null;
         }
       })
-      .filter(Boolean);
+      .filter((entry): entry is LogEntry => entry !== null);
   } else if (process.env.LOG_TYPE === "plain") {
     return data
       .split("\n")
       .filter(Boolean)
       .map((line) => {
-        console.log("🔍 Riga grezza:", line);
+        logger.debug("Riga grezza:", line);
 
         // parsing manuale tra parentesi quadre
         const timestampStart = line.indexOf("[") + 1;
@@ -78,42 +71,57 @@ function parseLogData(data) {
         const message = line.slice(contextEnd + 2).trim();
 
         if (!timestamp || !level || !module || !context || !message) {
-          console.warn("❌ Riga incompleta:", line);
+          logger.warn("Riga incompleta:", line);
           return null;
         }
 
         return {
-          "@timestamp": timestamp,
+          '@timestamp': timestamp,
           level: level.toLowerCase(),
           module,
           context,
           message,
           correlationId: null
-        };
+        } as LogEntry;
       })
-      .filter(Boolean);
+      .filter((entry): entry is LogEntry => entry !== null);
   } else {
-    console.error("❌ Tipo di log non supportato:", process.env.LOG_TYPE);
+    logger.error("Tipo di log non supportato:", process.env.LOG_TYPE);
     return [];
   }
 }
 
-
-
-app.get("/api/logs", (req, res) => {
-  const filePath = getLogFilePath();
-
-  fs.readFile(filePath, "utf8", (err, data) => {
-    if (err) {
-      console.error("❌ Errore nella lettura del file:", err.message);
-      return res.status(404).json({ error: "File non trovato o errore di lettura" });
-    }
-
-    const parsedLogs = parseLogData(data);
-    res.json(parsedLogs);
-  });
-});
-
-app.listen(PORT, () => {
-  console.log(`✅ Server avviato su http://localhost:${PORT}`);
-});
+export const sampleLogs: LogEntry[] = [
+  {
+    "@timestamp": new Date().toISOString(),
+    "level": "info",
+    "message": "Application started successfully",
+    "correlationId": "abc-123",
+    "module": "AppKernel",
+    "context": "Startup"
+  },
+  {
+    "@timestamp": new Date(Date.now() - 3600000).toISOString(),
+    "level": "error",
+    "message": "Failed to connect to database",
+    "correlationId": "def-456",
+    "module": "DatabaseService",
+    "context": "Connection"
+  },
+  {
+    "@timestamp": new Date(Date.now() - 7200000).toISOString(), 
+    "level": "warn",
+    "message": "High CPU usage detected",
+    "correlationId": "ghi-789",
+    "module": "MonitoringService",
+    "context": "Performance"
+  },
+  {
+    "@timestamp": new Date(Date.now() - 10800000).toISOString(),
+    "level": "debug",
+    "message": "Processing user request",
+    "correlationId": "jkl-012",
+    "module": "APIService",
+    "context": "UserRequest"
+  }
+];
