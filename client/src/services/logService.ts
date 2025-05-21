@@ -53,11 +53,37 @@ export const fetchPaginatedLogs = async (
   filters: {
     search?: string;
     levelFilter?: string;
+    startDate?: string; 
+    endDate?: string;  
   } = {}
 ): Promise<{
   logs: LogEntry[];
   total: number;
-  totalPages: number;
+  totalPages: number;  audit: {
+    byHour: {
+      hour: string;
+      info: number;
+      error: number;
+      warn: number;
+      debug: number;
+      total: number;
+    }[];
+    byDay: {
+      date: string;
+      info: number;
+      error: number;
+      warn: number;
+      debug: number;
+      total: number;
+    }[];
+    totalCounts: {
+      info: number;
+      error: number;
+      warn: number;
+      debug: number;
+      total: number;
+    };
+  };
 }> => {
   try {
     const queryParams = new URLSearchParams();
@@ -71,7 +97,15 @@ export const fetchPaginatedLogs = async (
     if (filters.levelFilter && filters.levelFilter !== 'all') {
       queryParams.append('level', filters.levelFilter);
     }
-    
+
+    if (filters.startDate) {
+      queryParams.append('startDate', filters.startDate);
+    }
+
+    if (filters.endDate) {
+      queryParams.append('endDate', filters.endDate);
+    }
+      
     const endpoint = `logs?${queryParams.toString()}`;
     const response = await apiRequest<{
       data: LogEntry[];
@@ -80,17 +114,53 @@ export const fetchPaginatedLogs = async (
         limit: number;
         total: number;
         totalPages: number;
-      }
+      };      audit: {
+        byHour: {
+          hour: string;
+          info: number;
+          error: number;
+          warn: number;
+          debug: number;
+          total: number;
+        }[];
+        byDay: {
+          date: string;
+          info: number;
+          error: number;
+          warn: number;
+          debug: number;
+          total: number;
+        }[];
+        totalCounts: {
+          info: number;
+          error: number;
+          warn: number;
+          debug: number;
+          total: number;
+        };
+      };
     }>(endpoint);
-    
-    return {
+      return {
       logs: response.data || [],
       total: response.pagination?.total || 0,
-      totalPages: response.pagination?.totalPages || 0
-    };
-  } catch (error) {
+      totalPages: response.pagination?.totalPages || 0,
+      audit: response.audit || {
+        byHour: [],
+        byDay: [],
+        totalCounts: { info: 0, error: 0, warn: 0, debug: 0, total: 0 }
+      }
+    };  } catch (error) {
     console.error("Error loading paginated logs:", error);
-    return { logs: [], total: 0, totalPages: 0 };
+    return { 
+      logs: [], 
+      total: 0, 
+      totalPages: 0, 
+      audit: { 
+        byHour: [], 
+        byDay: [],
+        totalCounts: { info: 0, error: 0, warn: 0, debug: 0, total: 0 } 
+      } 
+    };
   }
 };
 

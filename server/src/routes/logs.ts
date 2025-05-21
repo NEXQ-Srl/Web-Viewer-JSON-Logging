@@ -49,14 +49,55 @@ export default async function logRoutes(fastify: FastifyInstance): Promise<void>
                   context: { type: 'string', nullable: true }
                 }
               }
-            },
-            pagination: {
+            }, pagination: {
               type: 'object',
               properties: {
                 page: { type: 'integer' },
                 limit: { type: 'integer' },
                 total: { type: 'integer' },
                 totalPages: { type: 'integer' }
+              }
+            }, audit: {
+              type: 'object',
+              properties: {
+                byHour: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      hour: { type: 'string' },
+                      info: { type: 'integer' },
+                      error: { type: 'integer' },
+                      warn: { type: 'integer' },
+                      debug: { type: 'integer' },
+                      total: { type: 'integer' }
+                    }
+                  }
+                },
+                byDay: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      date: { type: 'string' },
+                      info: { type: 'integer' },
+                      error: { type: 'integer' },
+                      warn: { type: 'integer' },
+                      debug: { type: 'integer' },
+                      total: { type: 'integer' }
+                    }
+                  }
+                },
+                totalCounts: {
+                  type: 'object',
+                  properties: {
+                    info: { type: 'integer' },
+                    error: { type: 'integer' },
+                    warn: { type: 'integer' },
+                    debug: { type: 'integer' },
+                    total: { type: 'integer' }
+                  }
+                }
               }
             }
           }

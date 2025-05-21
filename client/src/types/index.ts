@@ -7,12 +7,43 @@ export interface LogEntry {
 }
 
 export interface ChartDataItem {
-  hour: string;
+  hour?: string;
+  date?: string;
   info?: number;
   error?: number;
   warn?: number;
   debug?: number;
   [key: string]: string | number | undefined;
+}
+
+export interface LogAuditItem {
+  hour: string;
+  info: number;
+  error: number;
+  warn: number;
+  debug: number;
+  total: number;
+}
+
+export interface LogAuditDayItem {
+  date: string;
+  info: number;
+  error: number;
+  warn: number;
+  debug: number;
+  total: number;
+}
+
+export interface LogAudit {
+  byHour: LogAuditItem[];
+  byDay: LogAuditDayItem[];
+  totalCounts: {
+    info: number;
+    error: number;
+    warn: number;
+    debug: number;
+    total: number;
+  };
 }
 
 export type LogLevel = 'info' | 'error' | 'warn' | 'debug' | 'all';

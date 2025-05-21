@@ -176,28 +176,121 @@ export function parseLogData(data: string): LogEntry[] {
 }
 
 
+function getLocalDatesForFileIteration(queryStartDate?: string, queryEndDate?: string): string[] {
+  const dates: string[] = [];
+  
+  if (!queryStartDate && !queryEndDate) {
+    return [getTodayDateString()]; 
+  }
+
+  const sDateISO = queryStartDate || queryEndDate!;
+  const eDateISO = queryEndDate || queryStartDate!;
+
+  const sDate = new Date(sDateISO);
+  const eDate = new Date(eDateISO);
+
+  if (sDate > eDate) {
+    logger.warn(`Start date (${sDateISO}) is after end date (${eDateISO}) for file iteration. No files will be read.`);
+    return [];
+  }
+
+  let current = new Date(sDate.getFullYear(), sDate.getMonth(), sDate.getDate());
+  const endLoop = new Date(eDate.getFullYear(), eDate.getMonth(), eDate.getDate());
+
+  let safetyCount = 0;
+  while (current <= endLoop && safetyCount < 365) {
+    const yyyy = current.getFullYear();
+    const mm = String(current.getMonth() + 1).padStart(2, "0");
+    const dd = String(current.getDate()).padStart(2, "0");
+    dates.push(`${yyyy}-${mm}-${dd}`);
+    current.setDate(current.getDate() + 1);
+    safetyCount++;
+  }
+  if (safetyCount >= 365) {
+    logger.warn("Date range for log files is too large, limited to 365 files.");
+  }
+  return dates;
+}
+
 
 export async function getFilteredLogs(query: LogFilterQuery): Promise<{
   logs: LogEntry[];
   total: number;
+  audit: {
+    byHour: { hour: string; info: number; error: number; warn: number; debug: number; total: number }[];
+    byDay: { date: string; info: number; error: number; warn: number; debug: number; total: number }[];
+    totalCounts: { info: number; error: number; warn: number; debug: number; total: number };
+  };
 }> {
-  const logFilePath = getLogFilePath();
+  let allLogsFromFileSystem: LogEntry[] = [];
 
-  await fsPromises.access(logFilePath);
+  const logDateStrings = getLocalDatesForFileIteration(query.startDate, query.endDate);
 
-  const logContent = await fsPromises.readFile(logFilePath, 'utf-8');
-  const allLogs = parseLogData(logContent);
+  if (logDateStrings.length === 0) {
+    logger.info("No log files to read based on the provided date range.");
+    if (query.startDate || query.endDate) {
+        return { 
+          logs: [], 
+          total: 0,
+          audit: {
+            byHour: [],
+            byDay: [],
+            totalCounts: { info: 0, error: 0, warn: 0, debug: 0, total: 0 }
+          }
+        };
+    }
+  }
+  
+  logger.info(`Attempting to read log files for dates: ${logDateStrings.join(', ')}`);
 
-  const filteredLogs = filterLogs(allLogs, query);
+  for (const dateString of logDateStrings) {
+    const logFilePath = getLogFilePath(dateString, false); 
+    try {
+      await fsPromises.access(logFilePath); 
+      const logContent = await fsPromises.readFile(logFilePath, 'utf-8');
+      const logsFromFile = parseLogData(logContent);
+      allLogsFromFileSystem.push(...logsFromFile);
+      logger.debug(`Successfully read and parsed ${logsFromFile.length} logs from ${logFilePath}`);
+    } catch (error) {
+      logger.info(`Log file for date ${dateString} not found or not accessible: ${logFilePath}. Skipping.`);
+    }
+  }
+    if (allLogsFromFileSystem.length === 0) {
+    logger.info("No logs found in the specified file(s) after reading.");
+    return { 
+      logs: [], 
+      total: 0,
+      audit: {
+        byHour: [],
+        byDay: [],
+        totalCounts: { info: 0, error: 0, warn: 0, debug: 0, total: 0 }
+      }
+    };
+  }
+
+  const filteredLogs = filterLogs(allLogsFromFileSystem, query);
   const paginatedLogs = paginateLogs(filteredLogs, query);
+  
+  const auditData = generateLogAudit(filteredLogs);
 
+  logger.info(`Returning ${paginatedLogs.length} paginated logs out of ${filteredLogs.length} filtered logs (from ${allLogsFromFileSystem.length} total logs read).`);
   return {
     logs: paginatedLogs,
-    total: filteredLogs.length
+    total: filteredLogs.length,
+    audit: auditData
   };
 }
 
 function filterLogs(logs: LogEntry[], filters: LogFilterQuery): LogEntry[] {
+  const filterStartDate = filters.startDate ? new Date(filters.startDate) : null;
+  let filterEndDate = filters.endDate ? new Date(filters.endDate) : null;
+
+  if (filterEndDate) {
+    filterEndDate.setUTCHours(23, 59, 59, 999);
+  }
+  
+  logger.debug(`Filtering with startDate: ${filterStartDate?.toISOString()}, endDate: ${filterEndDate?.toISOString()}`);
+
   return logs.filter(log => {
     if (filters.level && log.level !== filters.level) {
       return false;
@@ -218,11 +311,23 @@ function filterLogs(logs: LogEntry[], filters: LogFilterQuery): LogEntry[] {
       return false;
     }
 
-    if (filters.startDate && new Date(log['@timestamp']) < new Date(filters.startDate)) {
+    let logTimestamp: Date;
+    try {
+      logTimestamp = new Date(log['@timestamp']);
+      if (isNaN(logTimestamp.getTime())) {
+        logger.warn(`Invalid timestamp found in log: ${log['@timestamp']}`);
+        return false; 
+      }
+    } catch (e) {
+      logger.warn(`Error parsing timestamp: ${log['@timestamp']}`, e);
       return false;
     }
 
-    if (filters.endDate && new Date(log['@timestamp']) > new Date(filters.endDate)) {
+    if (filterStartDate && logTimestamp < filterStartDate) {
+      return false;
+    }
+
+    if (filterEndDate && logTimestamp > filterEndDate) {
       return false;
     }
 
@@ -250,6 +355,63 @@ function paginateLogs(logs: LogEntry[], pagination: { page?: number; limit?: num
   );
 
   return logs.slice(startIndex, endIndex);
+}
+
+function generateLogAudit(logs: LogEntry[]): {
+  byHour: { hour: string; info: number; error: number; warn: number; debug: number; total: number }[];
+  byDay: { date: string; info: number; error: number; warn: number; debug: number; total: number }[];
+  totalCounts: { info: number; error: number; warn: number; debug: number; total: number };
+} {
+  const hourlyData: Record<string, { info: number; error: number; warn: number; debug: number; total: number }> = {};
+  const dailyData: Record<string, { info: number; error: number; warn: number; debug: number; total: number }> = {};
+  const totalCounts = { info: 0, error: 0, warn: 0, debug: 0, total: 0 };
+  
+  for (let i = 0; i < 24; i++) {
+    const hour = i.toString().padStart(2, '0');
+    hourlyData[hour] = { info: 0, error: 0, warn: 0, debug: 0, total: 0 };
+  }
+  
+  logs.forEach(log => {
+    try {
+      const date = new Date(log['@timestamp']);
+      if (isNaN(date.getTime())) return;
+      
+      const hour = date.getHours().toString().padStart(2, '0');
+      const level = log.level?.toLowerCase() || 'unknown';
+      
+      const year = date.getFullYear();
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const day = date.getDate().toString().padStart(2, '0');
+      const dateStr = `${year}-${month}-${day}`;
+      
+      if (!dailyData[dateStr]) {
+        dailyData[dateStr] = { info: 0, error: 0, warn: 0, debug: 0, total: 0 };
+      }
+      
+      if (['info', 'error', 'warn', 'debug'].includes(level)) {
+        hourlyData[hour][level as 'info' | 'error' | 'warn' | 'debug'] += 1;
+        hourlyData[hour].total += 1;
+        
+        dailyData[dateStr][level as 'info' | 'error' | 'warn' | 'debug'] += 1;
+        dailyData[dateStr].total += 1;
+        
+        totalCounts[level as 'info' | 'error' | 'warn' | 'debug'] += 1;
+        totalCounts.total += 1;
+      }
+    } catch (error) {
+      logger.warn(`Error processing log for audit data: ${error}`);
+    }
+  });
+  
+  const byHour = Object.entries(hourlyData)
+    .map(([hour, counts]) => ({ hour, ...counts }))
+    .sort((a, b) => a.hour.localeCompare(b.hour));
+    
+  const byDay = Object.entries(dailyData)
+    .map(([date, counts]) => ({ date, ...counts }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+  
+  return { byHour, byDay, totalCounts };
 }
 
 export const LogService = {
