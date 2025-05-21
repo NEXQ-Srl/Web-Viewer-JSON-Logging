@@ -1,76 +1,101 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import LogsTable from "../components/logs/LogsTable";
 import LogsChart from "../components/logs/LogsChart";
 import LogsFilter from "../components/logs/LogsFilter";
-import { fetchAllLogs } from "../services/logService";
+import { fetchPaginatedLogs } from "../services/logService";
 import { LogEntry, ChartDataItem } from "../types";
 
 const Dashboard: React.FC = () => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [filteredLogs, setFilteredLogs] = useState<LogEntry[]>([]);
   const [displayedLogs, setDisplayedLogs] = useState<LogEntry[]>([]);
-  const [search, setSearch] = useState<string>("");
+  const [search, setSearch] = useState<string>(""); 
+  const [currentSearchInput, setCurrentSearchInput] = useState<string>(""); 
   const [levelFilter, setLevelFilter] = useState<string>("all");
   const [rowsPerPage, setRowsPerPage] = useState<number>(20);
   const [lastUpdated, setLastUpdated] = useState<string>("");
   const [hasMore, setHasMore] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  
-  const loadLogs = useCallback((): void => {
-    fetchAllLogs()
-      .then(data => {
-        const sorted = data.sort(
-          (a, b) => new Date(b["@timestamp"]).getTime() - new Date(a["@timestamp"]).getTime()
+  const [totalLogs, setTotalLogs] = useState<number>(0);
+  const [totalPages, setTotalPages] = useState<number>(0);
+  const lastLoadedPageRef = useRef<number>(0);
+  const isFetchingRef = useRef<boolean>(false);
+
+  const loadLogs = useCallback(
+    async (reset: boolean = true): Promise<void> => {
+      if (isFetchingRef.current) {
+        return;
+      }
+
+      isFetchingRef.current = true;
+      setIsLoading(true);
+
+      try {
+        const pageToFetch = reset ? 1 : lastLoadedPageRef.current + 1;
+
+        if (!reset && pageToFetch > totalPages && totalPages > 0) {
+          setHasMore(false);
+          setIsLoading(false);
+          isFetchingRef.current = false;
+          return;
+        }
+
+        const { logs: newLogs, total, totalPages: pages } = await fetchPaginatedLogs(
+          pageToFetch,
+          rowsPerPage,
+          { search, levelFilter }
         );
-        setLogs(sorted);
+
+        setTotalLogs(total);
+        setTotalPages(pages);
+        setHasMore(pageToFetch < pages);
+
+        if (reset) {
+          setLogs(newLogs);
+          setDisplayedLogs(newLogs);
+          lastLoadedPageRef.current = newLogs.length > 0 ? 1 : 0; 
+        } else if (newLogs.length > 0) {
+          setLogs(prev => [...prev, ...newLogs]);
+          setDisplayedLogs(prev => [...prev, ...newLogs]);
+          lastLoadedPageRef.current = pageToFetch;
+        } else {
+          if (!reset) setHasMore(false);
+        }
+
         setLastUpdated(new Date().toLocaleTimeString());
-      });
-  }, []);
+      } catch (error) {
+        console.error("Error loading logs:", error);
+      } finally {
+        setIsLoading(false);
+        isFetchingRef.current = false;
+        console.log("loadLogs: finally block. Set isLoading to false, isFetchingRef to false.");
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rowsPerPage, search, levelFilter]
+  );
 
   useEffect(() => {
-    loadLogs();
-    const interval = setInterval(() => loadLogs(), 30000);
+    lastLoadedPageRef.current = 0;
+    setLogs([]);
+    setDisplayedLogs([]);
+    loadLogs(true);
+    const interval = setInterval(() => loadLogs(true), 30000);
     return () => clearInterval(interval);
-  }, [loadLogs]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-    
-    const filtered = logs.filter((log) => {
-      const matchesSearch = JSON.stringify(log).toLowerCase().includes(search.toLowerCase());
-      const matchesLevel = levelFilter === "all" || log.level === levelFilter;
-      return matchesSearch && matchesLevel;
-    });
-    
-    setFilteredLogs(filtered);
-    setHasMore(filtered.length > rowsPerPage);
-    
-    setDisplayedLogs(filtered.slice(0, rowsPerPage));
-  }, [search, levelFilter, logs, rowsPerPage]);
+  }, [rowsPerPage, loadLogs]);
 
   const loadMoreLogs = useCallback(() => {
-    if (isLoading || !hasMore) return;
-    
-    setIsLoading(true);
-    
-    setTimeout(() => {
-      const nextPage = currentPage + 1;
-      const nextItems = filteredLogs.slice(0, nextPage * rowsPerPage);
-      
-      setDisplayedLogs(nextItems);
-      setCurrentPage(nextPage);
-      setHasMore(nextItems.length < filteredLogs.length);
-      setIsLoading(false);
-    }, 300);
-  }, [currentPage, filteredLogs, hasMore, isLoading, rowsPerPage]);
+    if (isLoading || !hasMore) {
+      return;
+    }
+    loadLogs(false);
+  }, [loadLogs, isLoading, hasMore]);
 
   const hourlyGrouped: Record<string, ChartDataItem> = {};
-  filteredLogs.forEach((log) => {
+  logs.forEach((log) => {
     try {
       const date = new Date(log["@timestamp"]);
       if (isNaN(date.getTime())) return;
-      
+
       const hour = date.getHours().toString().padStart(2, "0");
       const level = log.level || "unknown";
 
@@ -86,14 +111,19 @@ const Dashboard: React.FC = () => {
 
   const chartData = Object.values(hourlyGrouped).sort((a, b) => a.hour.localeCompare(b.hour));
 
+  const handleSearchSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    setSearch(currentSearchInput); 
+  };
+
   return (
     <div className="p-6 w-full">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold">Daily Log Viewer</h2>
         <div className="flex items-center gap-2">
           <span className="text-xs opacity-70">Last updated: {lastUpdated}</span>
-          <button 
-            onClick={() => loadLogs()} 
+          <button
+            onClick={() => loadLogs(true)}
             className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
             Refresh
@@ -101,16 +131,20 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      <LogsFilter 
-        search={search} 
-        setSearch={setSearch}
-        levelFilter={levelFilter}
-        setLevelFilter={setLevelFilter}
-      />
+      <form onSubmit={handleSearchSubmit}>
+        <LogsFilter
+          search={currentSearchInput}
+          setSearch={setCurrentSearchInput}
+          levelFilter={levelFilter}
+          setLevelFilter={setLevelFilter}
+          handleSearchSubmit={handleSearchSubmit}
+        />
+       
+      </form>
 
       <div className="flex items-end justify-between mb-4">
         <div className="font-medium">
-          Showing {displayedLogs.length} of {filteredLogs.length} logs
+          Showing {displayedLogs.length} of {totalLogs} logs
         </div>
         <div className="flex items-center gap-2">
           <label className="text-sm text-gray-600 dark:text-gray-300">Rows per page:</label>
@@ -118,7 +152,6 @@ const Dashboard: React.FC = () => {
             value={rowsPerPage}
             onChange={(e) => {
               setRowsPerPage(Number(e.target.value));
-              setCurrentPage(1);
             }}
             className="p-1 border rounded dark:bg-gray-800 dark:border-gray-700"
           >
@@ -133,12 +166,12 @@ const Dashboard: React.FC = () => {
       <LogsChart chartData={chartData} />
 
       <div className="mt-4">
-        <LogsTable 
+        <LogsTable
           logs={displayedLogs}
           onLoadMore={loadMoreLogs}
           hasMore={hasMore}
           isLoading={isLoading}
-          maxHeight="60vh" 
+          maxHeight="60vh"
         />
       </div>
     </div>

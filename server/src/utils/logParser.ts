@@ -96,24 +96,32 @@ export const sampleLogs: LogEntry[] = [
     "@timestamp": new Date().toISOString(),
     "level": "info",
     "message": "Application started successfully",
-    "correlationId": "abc-123"
+    "correlationId": "abc-123",
+    "module": "AppKernel",
+    "context": "Startup"
   },
   {
     "@timestamp": new Date(Date.now() - 3600000).toISOString(),
     "level": "error",
     "message": "Failed to connect to database",
-    "correlationId": "def-456"
+    "correlationId": "def-456",
+    "module": "DatabaseService",
+    "context": "Connection"
   },
   {
     "@timestamp": new Date(Date.now() - 7200000).toISOString(), 
     "level": "warn",
     "message": "High CPU usage detected",
-    "correlationId": "ghi-789"
+    "correlationId": "ghi-789",
+    "module": "MonitoringService",
+    "context": "Performance"
   },
   {
     "@timestamp": new Date(Date.now() - 10800000).toISOString(),
     "level": "debug",
     "message": "Processing user request",
-    "correlationId": "jkl-012"
+    "correlationId": "jkl-012",
+    "module": "APIService",
+    "context": "UserRequest"
   }
 ];

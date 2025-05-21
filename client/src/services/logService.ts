@@ -46,6 +46,54 @@ export const fetchAllLogs = async (): Promise<LogEntry[]> => {
   }
 };
 
+
+export const fetchPaginatedLogs = async (
+  page: number = 1,
+  limit: number = 20,
+  filters: {
+    search?: string;
+    levelFilter?: string;
+  } = {}
+): Promise<{
+  logs: LogEntry[];
+  total: number;
+  totalPages: number;
+}> => {
+  try {
+    const queryParams = new URLSearchParams();
+    queryParams.append('page', page.toString());
+    queryParams.append('limit', limit.toString());
+    
+    if (filters.search) {
+      queryParams.append('search', filters.search);
+    }
+    
+    if (filters.levelFilter && filters.levelFilter !== 'all') {
+      queryParams.append('level', filters.levelFilter);
+    }
+    
+    const endpoint = `logs?${queryParams.toString()}`;
+    const response = await apiRequest<{
+      data: LogEntry[];
+      pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+      }
+    }>(endpoint);
+    
+    return {
+      logs: response.data || [],
+      total: response.pagination?.total || 0,
+      totalPages: response.pagination?.totalPages || 0
+    };
+  } catch (error) {
+    console.error("Error loading paginated logs:", error);
+    return { logs: [], total: 0, totalPages: 0 };
+  }
+};
+
 export const formatTimestamp = (isoString: string | undefined): string => {
   if (!isoString) return "";
   try {

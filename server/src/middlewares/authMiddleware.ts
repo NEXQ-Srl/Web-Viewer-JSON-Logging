@@ -60,7 +60,6 @@ export async function authMiddleware(request: FastifyRequest, reply: FastifyRepl
             }
 
             const tenantId = config.auth.tenantId;
-            console.log(`Tenant ID: ${tenantId}`);
             if (!openIdConfigCache) {
                 const configUrl = `https://login.microsoftonline.com/${tenantId}/v2.0/.well-known/openid-configuration`;
                 logger.debug(`Fetching OpenID configuration from ${configUrl}`);

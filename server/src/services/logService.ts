@@ -1,6 +1,8 @@
 import { LogEntry } from '../types/log';
 import path from 'path';
 import fs from 'fs';
+import { promises as fsPromises } from 'fs';
+import { LogFilterQuery } from '../types/request';
 import { logger } from '../utils/logger';
 
 export function getTodayDateString(): string {
@@ -13,9 +15,9 @@ export function getTodayDateString(): string {
 
 export function getLogDirectoryPath(): string {
   const projectRoot = path.resolve(__dirname, '../../../');
-  
+
   return process.env.LOG_FOLDER_PATH && path.isAbsolute(process.env.LOG_FOLDER_PATH)
-    ? process.env.LOG_FOLDER_PATH 
+    ? process.env.LOG_FOLDER_PATH
     : path.resolve(projectRoot, process.env.LOG_FOLDER_PATH || 'logs');
 }
 
@@ -50,21 +52,17 @@ export function getLogFileName(dateStr: string): string {
 export function getLogFilePath(dateStr?: string, createIfMissing = true): string {
   const date = dateStr || getTodayDateString();
   const logFolderPath = getLogDirectoryPath();
-  
+
   if (!ensureDirectoryExists(logFolderPath)) {
     logger.error(`Failed to ensure log directory exists: ${logFolderPath}`);
   }
-  
+
   const fileName = getLogFileName(date);
   const fullPath = path.join(logFolderPath, fileName);
-  
-  logger.info(`Tipo di log: ${process.env.LOG_TYPE}`);
-  logger.info(`Cartella logs: ${logFolderPath}`);
-  logger.info(`File atteso: ${fullPath}`);
-  
+
   if (!fs.existsSync(fullPath)) {
     logger.warn(`Log file does not exist: ${fullPath}.`);
-    
+
     if (createIfMissing) {
       try {
         fs.writeFileSync(fullPath, '', { flag: 'wx' });
@@ -78,7 +76,7 @@ export function getLogFilePath(dateStr?: string, createIfMissing = true): string
   } else {
     logger.info(`Log file found: ${fullPath}`);
   }
-  
+
   return fullPath;
 }
 
@@ -90,7 +88,7 @@ export function ensureLogFileExists(filePath: string): boolean {
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
-      
+
       fs.writeFileSync(filePath, '', { flag: 'wx' });
       logger.info(`Log file created: ${filePath}`);
       return true;
@@ -120,10 +118,10 @@ export function parseJsonLogs(data: string): LogEntry[] {
 export function extractBracketField(line: string, startAfterIndex = 0): { value: string, endIndex: number } | null {
   const startIndex = line.indexOf('[', startAfterIndex);
   if (startIndex === -1) return null;
-  
+
   const endIndex = line.indexOf(']', startIndex);
   if (endIndex === -1) return null;
-  
+
   return {
     value: line.slice(startIndex + 1, endIndex),
     endIndex
@@ -139,16 +137,16 @@ export function parsePlainTextLogs(data: string): LogEntry[] {
 
       const timestampField = extractBracketField(line, 0);
       if (!timestampField) return null;
-      
+
       const levelField = extractBracketField(line, timestampField.endIndex);
       if (!levelField) return null;
-      
+
       const moduleField = extractBracketField(line, levelField.endIndex);
       if (!moduleField) return null;
-      
+
       const contextField = extractBracketField(line, moduleField.endIndex);
       if (!contextField) return null;
-      
+
       const message = line.slice(contextField.endIndex + 1).trim();
       if (!message) return null;
 
@@ -166,7 +164,7 @@ export function parsePlainTextLogs(data: string): LogEntry[] {
 
 
 export function parseLogData(data: string): LogEntry[] {
-  switch(process.env.LOG_TYPE) {
+  switch (process.env.LOG_TYPE) {
     case "json":
       return parseJsonLogs(data);
     case "plain":
@@ -175,6 +173,83 @@ export function parseLogData(data: string): LogEntry[] {
       logger.error("Tipo di log non supportato:", process.env.LOG_TYPE);
       return [];
   }
+}
+
+
+
+export async function getFilteredLogs(query: LogFilterQuery): Promise<{
+  logs: LogEntry[];
+  total: number;
+}> {
+  const logFilePath = getLogFilePath();
+
+  await fsPromises.access(logFilePath);
+
+  const logContent = await fsPromises.readFile(logFilePath, 'utf-8');
+  const allLogs = parseLogData(logContent);
+
+  const filteredLogs = filterLogs(allLogs, query);
+  const paginatedLogs = paginateLogs(filteredLogs, query);
+
+  return {
+    logs: paginatedLogs,
+    total: filteredLogs.length
+  };
+}
+
+function filterLogs(logs: LogEntry[], filters: LogFilterQuery): LogEntry[] {
+  return logs.filter(log => {
+    if (filters.level && log.level !== filters.level) {
+      return false;
+    }
+
+    if (filters.correlationId &&
+      (!log.correlationId || !log.correlationId.includes(filters.correlationId))) {
+      return false;
+    }
+
+    if (filters.module &&
+      (!log.module || !log.module.includes(filters.module))) {
+      return false;
+    }
+
+    if (filters.context &&
+      (!log.context || !log.context.includes(filters.context))) {
+      return false;
+    }
+
+    if (filters.startDate && new Date(log['@timestamp']) < new Date(filters.startDate)) {
+      return false;
+    }
+
+    if (filters.endDate && new Date(log['@timestamp']) > new Date(filters.endDate)) {
+      return false;
+    }
+
+    if (filters.search) {
+      const searchTerm = filters.search.toLowerCase();
+      const messageMatch = log.message && log.message.toLowerCase().includes(searchTerm);
+      const correlationIdMatch = log.correlationId && log.correlationId.toLowerCase().includes(searchTerm);
+      if (!messageMatch && !correlationIdMatch) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+}
+
+function paginateLogs(logs: LogEntry[], pagination: { page?: number; limit?: number }): LogEntry[] {
+  const page = pagination.page || 1;
+  const limit = pagination.limit || 20;
+  const startIndex = (page - 1) * limit;
+  const endIndex = startIndex + limit;
+
+  logs.sort((a, b) =>
+    new Date(b['@timestamp']).getTime() - new Date(a['@timestamp']).getTime()
+  );
+
+  return logs.slice(startIndex, endIndex);
 }
 
 export const LogService = {

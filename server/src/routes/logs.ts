@@ -6,7 +6,7 @@ export default async function logRoutes(fastify: FastifyInstance): Promise<void>
     schema: {
       tags: ['Logs'],
       summary: 'Retrieve application logs',
-      description: 'Returns a list of application logs from the log file',
+      description: 'Returns a list of application logs from the log file with pagination and filtering',
       security: [{ bearerAuth: [] }],
       headers: {
         type: 'object',
@@ -18,18 +18,46 @@ export default async function logRoutes(fastify: FastifyInstance): Promise<void>
         },
         required: ['authorization']
       },
+      querystring: {
+        type: 'object',
+        properties: {
+          page: { type: 'integer', minimum: 1, default: 1, description: 'Page number' },
+          limit: { type: 'integer', minimum: 1, maximum: 100, default: 20, description: 'Items per page' },
+          level: { type: 'string', enum: ['info', 'warn', 'error', 'debug'], description: 'Filter by log level' },
+          search: { type: 'string', description: 'Search in message and correlationId fields' },
+          startDate: { type: 'string', format: 'date-time', description: 'Filter logs after this date' },
+          endDate: { type: 'string', format: 'date-time', description: 'Filter logs before this date' },
+          correlationId: { type: 'string', description: 'Filter by correlation ID' },
+          module: { type: 'string', description: 'Filter by module name' },
+          context: { type: 'string', description: 'Filter by context' }
+        }
+      },
       response: {
         200: {
-          type: 'array',
-          items: {
-            type: 'object',
-            properties: {
-              '@timestamp': { type: 'string', format: 'date-time' },
-              level: { type: 'string', enum: ['info', 'warn', 'error', 'debug'] },
-              message: { type: 'string' },
-              correlationId: { type: 'string', nullable: true },
-              module: { type: 'string', nullable: true },
-              context: { type: 'string', nullable: true }
+          type: 'object',
+          properties: {
+            data: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  '@timestamp': { type: 'string', format: 'date-time' },
+                  level: { type: 'string', enum: ['info', 'warn', 'error', 'debug'] },
+                  message: { type: 'string' },
+                  correlationId: { type: 'string', nullable: true },
+                  module: { type: 'string', nullable: true },
+                  context: { type: 'string', nullable: true }
+                }
+              }
+            },
+            pagination: {
+              type: 'object',
+              properties: {
+                page: { type: 'integer' },
+                limit: { type: 'integer' },
+                total: { type: 'integer' },
+                totalPages: { type: 'integer' }
+              }
             }
           }
         },

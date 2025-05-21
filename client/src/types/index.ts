@@ -1,4 +1,3 @@
-// Log-related types
 export interface LogEntry {
   '@timestamp': string;
   level: string;
@@ -18,7 +17,6 @@ export interface ChartDataItem {
 
 export type LogLevel = 'info' | 'error' | 'warn' | 'debug' | 'all';
 
-// UI state types
 export interface PaginationState {
   currentPage: number;
   rowsPerPage: number;
@@ -29,16 +27,18 @@ export interface PaginationState {
 export interface FilterState {
   search: string;
   levelFilter: LogLevel;
+  page?: number;
+  limit?: number;
+  fromDate?: string;
+  toDate?: string;
 }
 
-// Auth-related types
 export interface AuthState {
   isAuthenticated: boolean;
   username: string | null;
   roles: string[];
 }
 
-// API response types
 export interface ApiResponse<T> {
   data?: T;
   error?: string;

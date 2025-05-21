@@ -1,26 +1,29 @@
 import React from 'react';
 import { Input } from '@/components/ui/input';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from '@/components/ui/select';
 import { Search } from 'lucide-react';
+import { Button } from "@/components/ui/button";
 
 interface LogsFilterProps {
   search: string;
   setSearch: React.Dispatch<React.SetStateAction<string>>;
   levelFilter: string;
   setLevelFilter: React.Dispatch<React.SetStateAction<string>>;
+  handleSearchSubmit: (e: React.FormEvent) => void;
 }
 
-const LogsFilter: React.FC<LogsFilterProps> = ({ 
-  search, 
-  setSearch, 
-  levelFilter, 
-  setLevelFilter 
+const LogsFilter: React.FC<LogsFilterProps> = ({
+  search,
+  setSearch,
+  levelFilter,
+  setLevelFilter,
+  handleSearchSubmit
 }) => {
   return (
     <div className="flex gap-4 mb-6 flex-col md:flex-row">
@@ -34,7 +37,7 @@ const LogsFilter: React.FC<LogsFilterProps> = ({
           className="pl-9"
         />
       </div>
-      
+
       <Select
         value={levelFilter}
         onValueChange={setLevelFilter}
@@ -50,6 +53,15 @@ const LogsFilter: React.FC<LogsFilterProps> = ({
           <SelectItem value="debug">Debug</SelectItem>
         </SelectContent>
       </Select>
+      <Button
+        type="submit"
+        variant="default"
+        size="default"
+        className="focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+        onClick={handleSearchSubmit}
+      >
+        Search
+      </Button>
     </div>
   );
 };

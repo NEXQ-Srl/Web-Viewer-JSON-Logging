@@ -40,40 +40,34 @@ const LogsTable: React.FC<LogsTableProps> = ({
   onLoadMore,
   hasMore,
   isLoading,
-  maxHeight = '60vh' // Default max height
+  maxHeight = '50vh'
 }) => {
-  const observerTarget = useRef<HTMLDivElement>(null);
-  const scrollableContainerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
+    if (!containerRef.current || !sentinelRef.current) return;
+    const obs = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !isLoading) {
+        const entry = entries[0];
+        if (entry.isIntersecting && hasMore && !isLoading) {
           onLoadMore();
         }
       },
-      { 
-        threshold: 0.1,
-        root: scrollableContainerRef.current // Observe intersections within the container
+      {
+        root: containerRef.current,
+        rootMargin: "50px",
+        threshold: 0,
       }
     );
-
-    const currentTarget = observerTarget.current;
-    if (currentTarget) {
-      observer.observe(currentTarget);
-    }
-
-    return () => {
-      if (currentTarget) {
-        observer.unobserve(currentTarget);
-      }
-    };
-  }, [onLoadMore, hasMore, isLoading]);
+    obs.observe(sentinelRef.current);
+    return () => obs.disconnect();
+  }, [hasMore, isLoading, onLoadMore]);
 
   return (
     <div className="relative rounded-md border">
       <div 
-        ref={scrollableContainerRef}
+        ref={containerRef}
         className="overflow-auto"
         style={{ maxHeight }}
       >
@@ -105,27 +99,31 @@ const LogsTable: React.FC<LogsTableProps> = ({
               </tr>
             ))}
             
-            {(hasMore || isLoading) && (
+            {isLoading && (
               <tr>
                 <td colSpan={4}>
-                  <div 
-                    ref={observerTarget} 
-                    className="py-4 text-center text-muted-foreground"
-                  >
-                    {isLoading ? (
-                      <div className="flex justify-center items-center gap-2 py-2">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>Loading more logs...</span>
-                      </div>
-                    ) : (
-                      <span>Scroll for more logs</span>
-                    )}
+                  <div className="flex justify-center items-center gap-2 py-4">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Loading more logs...</span>
                   </div>
                 </td>
               </tr>
             )}
             
-            {!hasMore && logs.length > 0 && !isLoading && (
+            {hasMore && !isLoading && (
+              <tr>
+                <td colSpan={4}>
+                  <button 
+                    className="w-full py-3 text-center text-sm text-blue-500 hover:underline"
+                    onClick={() => !isLoading && hasMore && onLoadMore()}
+                  >
+                    Load more logs
+                  </button>
+                </td>
+              </tr>
+            )}
+            
+            {!hasMore && logs.length > 0 && (
               <tr>
                 <td colSpan={4} className="py-4 text-center text-muted-foreground">
                   End of logs
@@ -142,6 +140,7 @@ const LogsTable: React.FC<LogsTableProps> = ({
             )}
           </tbody>
         </table>
+        <div ref={sentinelRef} style={{ height: '1px' }} />
       </div>
     </div>
   );
