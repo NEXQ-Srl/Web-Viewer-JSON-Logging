@@ -1,0 +1,22 @@
+version: '3.8'
+services:
+  fastify:
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
+      target: fastify
+    environment:
+      - NODE_ENV=production
+    expose:
+      - 5000
+    restart: unless-stopped
+  nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
+      target: nginx
+    ports:
+      - "80:80"
+    depends_on:
+      - fastify
+    restart: unless-stopped

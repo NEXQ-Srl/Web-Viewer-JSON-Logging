@@ -49,67 +49,44 @@ The application follows a client-server architecture:
   - Efficient log parsing and processing
   - Comprehensive audit and analytics capabilities
 
-## 🚀 Getting Started
+## 🚀 Running with Docker
 
 ### Prerequisites
+- [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/)
 
-- Node.js 14+ and npm
-- Access to JSON log files
+### 1. Build and Start the Application
 
-### Installation
+From the project root, run:
 
-#### From Source
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/NEXQ-Srl/Web-Viewer-JSON-Logging.git
-   cd Web-Viewer-JSON-Logging
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm run install:all
-   ```
-
-3. Configuration:
-   - Create a `.env` file in the server directory based on `.env.example`
-   - Set the log file path and other environment variables
-
-4. Start the application:
-   ```bash
-   npm run start
-   ```
-
-#### Using Docker
-
-```bash
-docker build -t nexqlogviewer .
-docker run -p 3000:3000 -p 8080:8080 -v /path/to/logs:/app/logs nexqlogviewer
+```powershell
+docker-compose up --build
 ```
 
-## 🔧 Development
+- This will build both the Fastify backend and the React frontend, and start Nginx to serve the frontend and proxy API requests.
+- The app will be available at: [http://localhost](http://localhost)
 
-Start development environment (both frontend and backend):
-```bash
-npm run dev
+### 2. Stopping the Application
+
+To stop the containers, press `Ctrl+C` in the terminal, then run:
+
+```powershell
+docker-compose down
 ```
 
-Start only frontend:
-```bash
-npm run start:client
-```
+### 3. Logs Directory
 
-Start only backend:
-```bash
-npm run start:server
-```
+If you want to use a custom logs directory, you can mount a volume in `docker-compose.yml` under the `fastify` service:
 
-Build for production:
-```bash
-npm run build
+```yaml
+    volumes:
+      - ./logs:/app/server/logs
 ```
 
 ## 📊 Log Format
+
+The application supports **both JSON and plain text log formats**. It will automatically detect and parse files named in either format for each day.
+
+### JSON Log Format
 
 The application expects JSON log files with the following format:
 
@@ -125,7 +102,15 @@ The application expects JSON log files with the following format:
 }
 ```
 
-Required fields:
+### Plain Text Log Format
+
+The app also supports plain text logs with lines like:
+
+```
+[2025-04-22T14:11:38.372Z][info][AppKernel][Startup] Application started successfully
+```
+
+Required fields (for both formats):
 - `@timestamp`: ISO timestamp
 - `level`: Log level (info, warn, error, debug)
 - `message`: Log message text
@@ -175,4 +160,3 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 📞 Support
 
 For support, email support@nexq.it or open an issue on GitHub.
-
