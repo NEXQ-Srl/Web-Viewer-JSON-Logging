@@ -75,15 +75,8 @@ export async function createServer(): Promise<FastifyInstance> {
 
   if (config.environment === 'production') {
     await server.register(fastifyStatic, {
-      root: path.join(__dirname, '../../build'),
+      root: path.join(__dirname, '../public'),
       prefix: '/'
-    });
-
-    server.get('*', (req, reply) => {
-      if (req.url.startsWith('/api/')) {
-        return reply.callNotFound();
-      }
-      return reply.sendFile('index.html');
     });
   }
 

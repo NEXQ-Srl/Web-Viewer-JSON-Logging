@@ -22,84 +22,6 @@ export function getLogDirectoryPath(): string {
 }
 
 
-export function ensureDirectoryExists(directoryPath: string): boolean {
-  if (!fs.existsSync(directoryPath)) {
-    try {
-      fs.mkdirSync(directoryPath, { recursive: true });
-      logger.info(`Log directory created: ${directoryPath}`);
-      return true;
-    } catch (err) {
-      logger.error(`Failed to create log directory: ${err}`);
-      return false;
-    }
-  }
-  return true;
-}
-
-
-export function getLogFileName(dateStr: string): string {
-  switch (process.env.LOG_TYPE) {
-    case "json":
-      return `app-${dateStr}.log`;
-    case "plain":
-      return `logNova.${dateStr}.log`;
-    default:
-      throw new Error("❌ Tipo di log non supportato. Usa 'json' o 'plain'.");
-  }
-}
-
-
-export function getLogFilePath(dateStr?: string, createIfMissing = true): string {
-  const date = dateStr || getTodayDateString();
-  const logFolderPath = getLogDirectoryPath();
-
-  if (!ensureDirectoryExists(logFolderPath)) {
-    logger.error(`Failed to ensure log directory exists: ${logFolderPath}`);
-  }
-
-  const fileName = getLogFileName(date);
-  const fullPath = path.join(logFolderPath, fileName);
-
-  if (!fs.existsSync(fullPath)) {
-    logger.warn(`Log file does not exist: ${fullPath}.`);
-
-    if (createIfMissing) {
-      try {
-        fs.writeFileSync(fullPath, '', { flag: 'wx' });
-        logger.info(`Created empty log file: ${fullPath}`);
-      } catch (err) {
-        logger.error(`Failed to create log file: ${err}`);
-      }
-    } else {
-      logger.warn('File will be created when logs are written. To create it now, pass createIfMissing=true');
-    }
-  } else {
-    logger.info(`Log file found: ${fullPath}`);
-  }
-
-  return fullPath;
-}
-
-
-export function ensureLogFileExists(filePath: string): boolean {
-  if (!fs.existsSync(filePath)) {
-    try {
-      const dir = path.dirname(filePath);
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-      }
-
-      fs.writeFileSync(filePath, '', { flag: 'wx' });
-      logger.info(`Log file created: ${filePath}`);
-      return true;
-    } catch (err) {
-      logger.error(`Failed to create log file: ${err}`);
-      return false;
-    }
-  }
-  return true;
-}
-
 export function parseJsonLogs(data: string): LogEntry[] {
   return data
     .split("\n")
@@ -160,19 +82,6 @@ export function parsePlainTextLogs(data: string): LogEntry[] {
       } as LogEntry;
     })
     .filter((entry): entry is LogEntry => entry !== null);
-}
-
-
-export function parseLogData(data: string): LogEntry[] {
-  switch (process.env.LOG_TYPE) {
-    case "json":
-      return parseJsonLogs(data);
-    case "plain":
-      return parsePlainTextLogs(data);
-    default:
-      logger.error("Tipo di log non supportato:", process.env.LOG_TYPE);
-      return [];
-  }
 }
 
 
@@ -244,18 +153,28 @@ export async function getFilteredLogs(query: LogFilterQuery): Promise<{
   logger.info(`Attempting to read log files for dates: ${logDateStrings.join(', ')}`);
 
   for (const dateString of logDateStrings) {
-    const logFilePath = getLogFilePath(dateString, false); 
+    const jsonLogFilePath = path.join(getLogDirectoryPath(), `app-${dateString}.log`);
     try {
-      await fsPromises.access(logFilePath); 
-      const logContent = await fsPromises.readFile(logFilePath, 'utf-8');
-      const logsFromFile = parseLogData(logContent);
+      await fsPromises.access(jsonLogFilePath);
+      const logContent = await fsPromises.readFile(jsonLogFilePath, 'utf-8');
+      const logsFromFile = parseJsonLogs(logContent);
       allLogsFromFileSystem.push(...logsFromFile);
-      logger.debug(`Successfully read and parsed ${logsFromFile.length} logs from ${logFilePath}`);
+      logger.debug(`Successfully read and parsed ${logsFromFile.length} JSON logs from ${jsonLogFilePath}`);
     } catch (error) {
-      logger.info(`Log file for date ${dateString} not found or not accessible: ${logFilePath}. Skipping.`);
+      logger.info(`JSON log file for date ${dateString} not found or not accessible: ${jsonLogFilePath}. Skipping.`);
+    }
+    const plainLogFilePath = path.join(getLogDirectoryPath(), `logNova.${dateString}.log`);
+    try {
+      await fsPromises.access(plainLogFilePath);
+      const logContent = await fsPromises.readFile(plainLogFilePath, 'utf-8');
+      const logsFromFile = parsePlainTextLogs(logContent);
+      allLogsFromFileSystem.push(...logsFromFile);
+      logger.debug(`Successfully read and parsed ${logsFromFile.length} plain logs from ${plainLogFilePath}`);
+    } catch (error) {
+      logger.info(`Plain log file for date ${dateString} not found or not accessible: ${plainLogFilePath}. Skipping.`);
     }
   }
-    if (allLogsFromFileSystem.length === 0) {
+  if (allLogsFromFileSystem.length === 0) {
     logger.info("No logs found in the specified file(s) after reading.");
     return { 
       logs: [], 
@@ -417,11 +336,6 @@ function generateLogAudit(logs: LogEntry[]): {
 export const LogService = {
   getTodayDateString,
   getLogDirectoryPath,
-  ensureDirectoryExists,
-  ensureLogFileExists,
-  getLogFileName,
-  getLogFilePath,
   parseJsonLogs,
-  parsePlainTextLogs,
-  parseLogData
+  parsePlainTextLogs
 };
