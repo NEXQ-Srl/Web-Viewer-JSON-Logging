@@ -165,8 +165,8 @@ docker run -d \
 -p 9295:5000 \
 -e VITE_AUTH_ENABLED="true" \
 -e NODE_ENV="production" \
--e VITE_AZURE_TENANT_ID="a62a799d-0556-44ca-afc3-237b336510b7" \
--e VITE_AZURE_CLIENT_ID="4e411659-7ce2-4a73-ac10-74defdee39ea" \
+-e VITE_AZURE_TENANT_ID="1111-1111-11111-11111-111111" \
+-e VITE_AZURE_CLIENT_ID="1111-1111-11111-11111-111111" \
 -v /novaLogs:/app/server/logs \
 web-viewer-logs```
 
