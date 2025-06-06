@@ -149,6 +149,28 @@ Query parameters for `/api/logs`:
 - `startDate`: Filter logs after this date
 - `endDate`: Filter logs before this date
 
+## Basic Installation
+### Download
+```
+git clone https://github.com/NEXQ-Srl/Web-Viewer-JSON-Logging.git
+```
+### Create Image
+```
+docker build -t web-viewer-logs .
+```
+### Run
+```
+docker run -d \
+--name webviewerlogs \
+-p 9295:5000 \
+-e VITE_AUTH_ENABLED="true" \
+-e NODE_ENV="production" \
+-e VITE_AZURE_TENANT_ID="a62a799d-0556-44ca-afc3-237b336510b7" \
+-e VITE_AZURE_CLIENT_ID="4e411659-7ce2-4a73-ac10-74defdee39ea" \
+-v /novaLogs:/app/server/logs \
+web-viewer-logs```
+
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
