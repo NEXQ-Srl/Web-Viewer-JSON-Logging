@@ -100,6 +100,7 @@ The application expects JSON log files with the following format:
   "environment": "PROD"
   // ...any additional fields are supported
 }
+
 ```
 
 ### Plain Text Log Format
@@ -167,8 +168,9 @@ docker run -d \
 -e NODE_ENV="production" \
 -e VITE_AZURE_TENANT_ID="1111-1111-11111-11111-111111" \
 -e VITE_AZURE_CLIENT_ID="1111-1111-11111-11111-111111" \
--v /novaLogs:/app/server/logs \
-web-viewer-logs```
+-v /Logs:/app/server/logs \
+web-viewer-logs
+```
 
 
 ## 🤝 Contributing
