@@ -23,18 +23,16 @@ A modern, feature-rich application for visualizing, analyzing, and monitoring JS
 ## 🔍 Screenshots
 
 <div align="center">
-```html
-<div class="screenshot-grid">
-   <img src="screenshots/web-viewer.png" alt="Dashboard view" width="600" />
-</div>
 
-<p><em>Screenshots of the application showing the dashboard, detailed log view, and filtering capabilities</em></p>
-```
+![Dashboard View](screenshots/web-viewer.png)
+
+*Application dashboard showing log visualization and filtering capabilities*
+
 </div>
 
 ## 🏗️ Architecture
 
-The application follows a client-server architecture:
+The application follows a unified client-server architecture:
 
 - **Frontend**: React + TypeScript application with:
   - Recharts for data visualization
@@ -47,66 +45,63 @@ The application follows a client-server architecture:
   - RESTful API endpoints for log data retrieval
   - Authentication middleware for Azure AD token validation
   - Efficient log parsing and processing
+  - Static file serving for the React frontend
   - Comprehensive audit and analytics capabilities
 
 ## 🚀 Getting Started
 
 ### Prerequisites
+- [Docker](https://www.docker.com/)
 
-- Node.js 14+ and npm
-- Access to JSON log files
+### 1. Build and Start the Application
 
-### Installation
-
-#### From Source
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/NEXQ-Srl/Web-Viewer-JSON-Logging.git
-   cd Web-Viewer-JSON-Logging
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm run install:all
-   ```
-
-3. Configuration:
-   - Create a `.env` file in the server directory based on `.env.example`
-   - Set the log file path and other environment variables
-
-4. Start the application:
-   ```bash
-   npm run start
-   ```
-
-#### Using Docker
+From the project root, run:
 
 ```bash
-docker build -t nexqlogviewer .
-docker run -p 3000:3000 -p 8080:8080 -v /path/to/logs:/app/logs nexqlogviewer
+# Build the Docker image
+docker build -t web-viewer-json-logging .
+
+# Run the container with both ports exposed
+docker run -p 3000:3000 -p 5173:5173 \
+  -e AUTH_ENABLED=true \
+  -e AZURE_TENANT_ID=your-tenant-id \
+  -e AZURE_CLIENT_ID=your-client-id \
+  -v ./logs:/app/server/logs \
+  web-viewer-json-logging
 ```
 
-## 🔧 Development
+The application will be available at: 
+- **Client (Frontend)**: [http://localhost:5173](http://localhost:5173)
+- **Server (API)**: [http://localhost:3000](http://localhost:3000)
 
-Start development environment (both frontend and backend):
+### 2. Environment Variables
+
+You can customize the application behavior using these environment variables:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `NODE_ENV` | Environment mode | `production` |
+| `PORT` | Server API port | `3000` |
+| `CLIENT_PORT` | Client frontend port | `5173` |
+| `AUTH_ENABLED` | Enable/disable authentication | `true` |
+| `AZURE_TENANT_ID` | Azure AD tenant ID | `""` |
+| `AZURE_CLIENT_ID` | Azure AD client ID | `""` |
+| `LOG_DIRECTORY` | Path to log files | `/app/server/logs` |
+
+### 3. Custom Logs Directory
+
+To use your own log files, mount a volume when running the container:
+
 ```bash
-npm run dev
+docker run -p 3000:3000 -p 5173:5173 -v /path/to/your/logs:/app/server/logs web-viewer-json-logging
 ```
 
-Start only frontend:
-```bash
-npm run start:client
-```
+### 4. Stopping the Application
 
-Start only backend:
-```bash
-npm run start:server
-```
+To stop the container, press `Ctrl+C` or use:
 
-Build for production:
 ```bash
-npm run build
+docker stop <container-id>
 ```
 
 ## 📊 Log Format
@@ -138,11 +133,11 @@ Optional fields (enhance functionality):
 
 Authentication is handled through Microsoft Azure Active Directory:
 
-1. Configure Azure AD in your environment file:
-   ```
-   AUTH_ENABLED=true
-   AZURE_TENANT_ID=your-tenant-id
-   AZURE_CLIENT_ID=your-client-id
+1. Configure Azure AD using environment variables:
+   ```bash
+   -e AUTH_ENABLED=true \
+   -e AZURE_TENANT_ID=your-tenant-id \
+   -e AZURE_CLIENT_ID=your-client-id
    ```
 
 2. Set required scopes (default is "User.Read")
