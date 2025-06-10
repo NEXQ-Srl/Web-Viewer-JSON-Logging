@@ -23,18 +23,16 @@ A modern, feature-rich application for visualizing, analyzing, and monitoring JS
 ## 🔍 Screenshots
 
 <div align="center">
-```html
-<div class="screenshot-grid">
-   <img src="screenshots/web-viewer.png" alt="Dashboard view" width="600" />
-</div>
 
-<p><em>Screenshots of the application showing the dashboard, detailed log view, and filtering capabilities</em></p>
-```
+![Dashboard View](screenshots/web-viewer.png)
+
+*Application dashboard showing log visualization and filtering capabilities*
+
 </div>
 
 ## 🏗️ Architecture
 
-The application follows a client-server architecture:
+The application follows a unified client-server architecture:
 
 - **Frontend**: React + TypeScript application with:
   - Recharts for data visualization
@@ -47,46 +45,66 @@ The application follows a client-server architecture:
   - RESTful API endpoints for log data retrieval
   - Authentication middleware for Azure AD token validation
   - Efficient log parsing and processing
+  - Static file serving for the React frontend
   - Comprehensive audit and analytics capabilities
 
-## 🚀 Running with Docker
+## 🚀 Getting Started
 
 ### Prerequisites
-- [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/)
+- [Docker](https://www.docker.com/)
 
 ### 1. Build and Start the Application
 
 From the project root, run:
 
-```powershell
-docker-compose up --build
+```bash
+# Build the Docker image
+docker build -t web-viewer-json-logging .
+
+# Run the container with both ports exposed
+docker run -p 3000:3000 -p 5173:5173 \
+  -e AUTH_ENABLED=true \
+  -e AZURE_TENANT_ID=your-tenant-id \
+  -e AZURE_CLIENT_ID=your-client-id \
+  -v ./logs:/app/server/logs \
+  web-viewer-json-logging
 ```
 
-- This will build both the Fastify backend and the React frontend, and start Nginx to serve the frontend and proxy API requests.
-- The app will be available at: [http://localhost](http://localhost)
+The application will be available at: 
+- **Client (Frontend)**: [http://localhost:5173](http://localhost:5173)
+- **Server (API)**: [http://localhost:3000](http://localhost:3000)
 
-### 2. Stopping the Application
+### 2. Environment Variables
 
-To stop the containers, press `Ctrl+C` in the terminal, then run:
+You can customize the application behavior using these environment variables:
 
-```powershell
-docker-compose down
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `NODE_ENV` | Environment mode | `production` |
+| `PORT` | Server API port | `3000` |
+| `CLIENT_PORT` | Client frontend port | `5173` |
+| `AUTH_ENABLED` | Enable/disable authentication | `true` |
+| `AZURE_TENANT_ID` | Azure AD tenant ID | `""` |
+| `AZURE_CLIENT_ID` | Azure AD client ID | `""` |
+| `LOG_DIRECTORY` | Path to log files | `/app/server/logs` |
+
+### 3. Custom Logs Directory
+
+To use your own log files, mount a volume when running the container:
+
+```bash
+docker run -p 3000:3000 -p 5173:5173 -v /path/to/your/logs:/app/server/logs web-viewer-json-logging
 ```
 
-### 3. Logs Directory
+### 4. Stopping the Application
 
-If you want to use a custom logs directory, you can mount a volume in `docker-compose.yml` under the `fastify` service:
+To stop the container, press `Ctrl+C` or use:
 
-```yaml
-    volumes:
-      - ./logs:/app/server/logs
+```bash
+docker stop <container-id>
 ```
 
 ## 📊 Log Format
-
-The application supports **both JSON and plain text log formats**. It will automatically detect and parse files named in either format for each day.
-
-### JSON Log Format
 
 The application expects JSON log files with the following format:
 
@@ -100,18 +118,9 @@ The application expects JSON log files with the following format:
   "environment": "PROD"
   // ...any additional fields are supported
 }
-
 ```
 
-### Plain Text Log Format
-
-The app also supports plain text logs with lines like:
-
-```
-[2025-04-22T14:11:38.372Z][info][AppKernel][Startup] Application started successfully
-```
-
-Required fields (for both formats):
+Required fields:
 - `@timestamp`: ISO timestamp
 - `level`: Log level (info, warn, error, debug)
 - `message`: Log message text
@@ -124,11 +133,11 @@ Optional fields (enhance functionality):
 
 Authentication is handled through Microsoft Azure Active Directory:
 
-1. Configure Azure AD in your environment file:
-   ```
-   AUTH_ENABLED=true
-   AZURE_TENANT_ID=your-tenant-id
-   AZURE_CLIENT_ID=your-client-id
+1. Configure Azure AD using environment variables:
+   ```bash
+   -e AUTH_ENABLED=true \
+   -e AZURE_TENANT_ID=your-tenant-id \
+   -e AZURE_CLIENT_ID=your-client-id
    ```
 
 2. Set required scopes (default is "User.Read")
@@ -150,29 +159,6 @@ Query parameters for `/api/logs`:
 - `startDate`: Filter logs after this date
 - `endDate`: Filter logs before this date
 
-## Basic Installation
-### Download
-```
-git clone https://github.com/NEXQ-Srl/Web-Viewer-JSON-Logging.git
-```
-### Create Image
-```
-docker build -t web-viewer-logs .
-```
-### Run
-```
-docker run -d \
---name webviewerlogs \
--p 9295:5000 \
--e VITE_AUTH_ENABLED="true" \
--e NODE_ENV="production" \
--e VITE_AZURE_TENANT_ID="1111-1111-11111-11111-111111" \
--e VITE_AZURE_CLIENT_ID="1111-1111-11111-11111-111111" \
--v /Logs:/app/server/logs \
-web-viewer-logs
-```
-
-
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
@@ -184,3 +170,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 📞 Support
 
 For support, email support@nexq.it or open an issue on GitHub.
+
