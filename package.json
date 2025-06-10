@@ -8,7 +8,7 @@
     "start": "concurrently \"npm run start:server\" \"npm run start:client\"",
     "start:client": "cd client && npx vite --force",
     "start:server": "cd server && npm run dev",
-    "build": "npm run build:client && npm run build:server",
+    "build": "npm run build:client --force && npm run build:server",
     "build:client": "cd client && npm run build",
     "build:server": "cd server && npm run build",
     "test": "echo \"Error: no test specified\" && exit 1",
