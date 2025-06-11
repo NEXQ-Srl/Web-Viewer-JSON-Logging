@@ -32,7 +32,7 @@ A modern, feature-rich application for visualizing, analyzing, and monitoring JS
 
 ## 🏗️ Architecture
 
-The application follows a unified client-server architecture:
+The application follows a unified client-server architecture with optimized multi-stage Docker build:
 
 - **Frontend**: React + TypeScript application with:
   - Recharts for data visualization
@@ -48,6 +48,8 @@ The application follows a unified client-server architecture:
   - Static file serving for the React frontend
   - Comprehensive audit and analytics capabilities
 
+- **Deployment**: Multi-stage Docker build that compiles both client and server components into a single production-ready container
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -61,11 +63,12 @@ From the project root, run:
 # Build the Docker image
 docker build -t web-viewer-json-logging .
 
-# Run the container with both ports exposed
+# Run the container
 docker run -p 3000:3000 -p 5173:5173 \
   -e AUTH_ENABLED=true \
+  -e VITE_AZURE_TENANT_ID=your-tenant-id \
+  -e VITE_AZURE_CLIENT_ID=your-client-id \
   -e AZURE_TENANT_ID=your-tenant-id \
-  -e AZURE_CLIENT_ID=your-client-id \
   -v ./logs:/app/server/logs \
   web-viewer-json-logging
 ```
@@ -84,16 +87,25 @@ You can customize the application behavior using these environment variables:
 | `PORT` | Server API port | `3000` |
 | `CLIENT_PORT` | Client frontend port | `5173` |
 | `AUTH_ENABLED` | Enable/disable authentication | `true` |
-| `AZURE_TENANT_ID` | Azure AD tenant ID | `""` |
-| `AZURE_CLIENT_ID` | Azure AD client ID | `""` |
+| `VITE_AZURE_TENANT_ID` | Azure AD tenant ID for client | `""` |
+| `VITE_AZURE_CLIENT_ID` | Azure AD client ID for client | `""` |
+| `AZURE_TENANT_ID` | Azure AD tenant ID for server | `""` |
 | `LOG_DIRECTORY` | Path to log files | `/app/server/logs` |
+
+**Note**: Client-side Azure variables use the `VITE_` prefix to be exposed to the frontend build process.
 
 ### 3. Custom Logs Directory
 
 To use your own log files, mount a volume when running the container:
 
 ```bash
-docker run -p 3000:3000 -p 5173:5173 -v /path/to/your/logs:/app/server/logs web-viewer-json-logging
+docker run -p 3000:3000 -p 5173:5173 \
+  -e AUTH_ENABLED=true \
+  -e VITE_AZURE_TENANT_ID=your-tenant-id \
+  -e VITE_AZURE_CLIENT_ID=your-client-id \
+  -e AZURE_TENANT_ID=your-tenant-id \
+  -v /path/to/your/logs:/app/server/logs \
+  web-viewer-json-logging
 ```
 
 ### 4. Stopping the Application
@@ -136,13 +148,16 @@ Authentication is handled through Microsoft Azure Active Directory:
 1. Configure Azure AD using environment variables:
    ```bash
    -e AUTH_ENABLED=true \
-   -e AZURE_TENANT_ID=your-tenant-id \
-   -e AZURE_CLIENT_ID=your-client-id
+   -e VITE_AZURE_TENANT_ID=your-tenant-id \
+   -e VITE_AZURE_CLIENT_ID=your-client-id \
+   -e AZURE_TENANT_ID=your-tenant-id
    ```
 
 2. Set required scopes (default is "User.Read")
 
 3. Authentication can be disabled for development by setting `AUTH_ENABLED=false`
+
+**Note**: Both client-side (`VITE_` prefixed) and server-side Azure variables are required for full authentication functionality.
 
 ## 🌐 API Endpoints
 
