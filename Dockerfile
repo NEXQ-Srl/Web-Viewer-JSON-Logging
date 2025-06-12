@@ -16,6 +16,10 @@ RUN curl -fsSL https://nodejs.org/dist/v22.13.1/node-v22.13.1-linux-x64.tar.xz -
 # Set working directory
 WORKDIR /app
 
+# Client-side Azure variables (with VITE_ prefix for Vite to expose them)
+ENV VITE_AZURE_TENANT_ID="your-tenant-id-here"
+ENV VITE_AZURE_CLIENT_ID="your-client-id-here"
+
 # Install and build client
 COPY client/package.json client/package-lock.json ./client/
 RUN cd client && npm install --legacy-peer-deps
@@ -59,8 +63,9 @@ ENV NODE_ENV=production
 ENV PORT=3000
 ENV CLIENT_PORT=5173
 ENV AUTH_ENABLED=true
-ENV AZURE_TENANT_ID="your-tenant-id"
-ENV AZURE_CLIENT_ID="your-client-id"
+
+# Server-side variables (if your server also needs them)
+ENV AZURE_TENANT_ID="your-tenant-id-here"
 ENV LOG_DIRECTORY=/app/server/logs
 
 # Create logs directory
